@@ -79,7 +79,24 @@ void sr_handlepacket(struct sr_instance* sr,
   printf("*** -> Received packet of length %d \n",len);
 
   /* fill in code here */
-  print_hdr_eth(packet);
+  print_hdr_arp(packet);
+  
+  /* get the ethernet header */
+  // sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)packet;
+
+  // uint16_t ethtype = ethertype(packet);
+
+  // if (ethtype == ethertype_arp) {
+
+  //   /* In the case of an ARP request, you should only send an ARP reply if the target IP address is one of
+  //    * your router's IP addresses */
+  //   struct sr_if *if_walker = sr->if_list;
+  //   while (if_walker) {
+  //     if (if_walker->ip == iphdr->ip_dst) {
+
+  //     }
+  //   }
+  // }
 
 }/* end sr_ForwardPacket */
 
