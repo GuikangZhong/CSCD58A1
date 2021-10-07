@@ -79,6 +79,7 @@ void sr_handlepacket(struct sr_instance* sr,
   printf("*** -> Received packet of length %d \n",len);
 
   /* fill in code here */
+  print_hdr_eth(packet);
 
 }/* end sr_ForwardPacket */
 
