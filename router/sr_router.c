@@ -86,16 +86,23 @@ void sr_handlepacket(struct sr_instance* sr,
 
   if (ethtype == ethertype_arp) {
     sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
-    print_hdr_arp(arp_hdr);
     /* In the case of an ARP request, you should only send an ARP reply if the target IP address is one of
-     * your router's IP addresses
-    struct sr_if *if_walker = sr->if_list;
-    while (if_walker) {
-      if (if_walker->ip == iphdr->ip_dst) {
-
-      }
-    }*/
+     * your router's IP addresses */
+    struct sr_if *if_walker = find_interface(sr, arp_hdr->ar_tip);
+    if (ntohs(arp_hdr->ar_op) == arp_op_request && if_walker) {
+      /* construct ARP reply */
+    }
   }
 
 }/* end sr_ForwardPacket */
 
+struct sr_if* find_interface(struct sr_instance* sr, uint32_t tip) {
+  struct sr_if *if_walker = sr->if_list;
+  while (if_walker) {
+    if (if_walker->ip == tip) {
+      return if_walker;
+    }
+    if_walker = if_walker->next;
+  }
+  return 0;
+}
