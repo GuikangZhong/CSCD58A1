@@ -94,16 +94,30 @@ void sr_handlepacket(struct sr_instance* sr,
     struct sr_if *if_walker = find_interface(sr, arp_hdr->ar_tip);
     if (ntohs(arp_hdr->ar_op) == arp_op_request && if_walker) {
       /* construct ARP reply */
-      uint8_t *reply_packet = (uint8_t *)malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
+      unsigned long reply_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
+      uint8_t *reply_packet = (uint8_t *)malloc(reply_len);
       struct sr_if* source_if = sr_get_interface(sr, interface);
       
       /* construct ethernet header */
       sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)reply_packet;
-      memcpy(reply_ehdr->ether_dhost, arp_hdr->ar_sip, sizeof(uint32_t));
-      memcpy(reply_ehdr->ether_shost, source_if->ip, sizeof(uint32_t));
-      reply_ehdr->ether_type = ethertype_arp;
+      memcpy(reply_ehdr->ether_dhost, ehdr->ether_shost, sizeof(uint32_t));
+      memcpy(reply_ehdr->ether_shost, source_if->addr, sizeof(uint32_t));
+      reply_ehdr->ether_type = htons(ethertype_arp);
 
       /* construct arp header */
+      sr_arp_hdr_t *reply_arp_hdr = (sr_arp_hdr_t *)(reply_packet + sizeof(sr_ethernet_hdr_t));
+      reply_arp_hdr->ar_hrd = htons(arp_hrd_ethernet);
+      reply_arp_hdr->ar_pro = htons(ethertype_ip);
+      reply_arp_hdr->ar_hln = ETHER_ADDR_LEN;
+      reply_arp_hdr->ar_pln = arp_hdr->ar_pln;
+      reply_arp_hdr->ar_op = htons(arp_op_reply);
+      memcpy(reply_arp_hdr->ar_sha, source_if->addr, ETHER_ADDR_LEN);
+      reply_arp_hdr->ar_sip = source_if->ip;
+      memcpy(reply_arp_hdr->ar_tha, arp_hdr->ar_sha, ETHER_ADDR_LEN);
+      reply_arp_hdr->ar_tip = arp_hdr->ar_sip;
+
+      sr_send_packet(sr, reply_packet, reply_len, source_if->name);
+      free(reply_packet);
     }
   }
 
