@@ -13,7 +13,8 @@
 
 #include <stdio.h>
 #include <assert.h>
-
+#include <stdlib.h>
+#include <string.h>
 
 #include "sr_if.h"
 #include "sr_rt.h"
@@ -21,6 +22,8 @@
 #include "sr_protocol.h"
 #include "sr_arpcache.h"
 #include "sr_utils.h"
+
+struct sr_if* find_interface(struct sr_instance* sr, uint32_t tip);
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -91,6 +94,16 @@ void sr_handlepacket(struct sr_instance* sr,
     struct sr_if *if_walker = find_interface(sr, arp_hdr->ar_tip);
     if (ntohs(arp_hdr->ar_op) == arp_op_request && if_walker) {
       /* construct ARP reply */
+      uint8_t *reply_packet = (uint8_t *)malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
+      struct sr_if* source_if = sr_get_interface(sr, interface);
+      
+      /* construct ethernet header */
+      sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)reply_packet;
+      memcpy(reply_ehdr->ether_dhost, arp_hdr->ar_sip, sizeof(uint32_t));
+      memcpy(reply_ehdr->ether_shost, source_if->ip, sizeof(uint32_t));
+      reply_ehdr->ether_type = ethertype_arp;
+
+      /* construct arp header */
     }
   }
 
