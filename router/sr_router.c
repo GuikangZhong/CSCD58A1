@@ -94,8 +94,8 @@ void sr_handlepacket(struct sr_instance* sr,
       if (if_walker->ip == iphdr->ip_dst) {
 
       }
-    }
-  }*/
+    }*/
+  }
 
 }/* end sr_ForwardPacket */
 
