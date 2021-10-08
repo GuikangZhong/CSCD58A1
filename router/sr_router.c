@@ -89,6 +89,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
   if (ethtype == ethertype_arp) {
     sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
+    print_hdr_arp(packet+sizeof(sr_ethernet_hdr_t));
     /* In the case of an ARP request, you should only send an ARP reply if the target IP address is one of
      * your router's IP addresses */
     struct sr_if *if_walker = find_interface(sr, arp_hdr->ar_tip);
@@ -100,16 +101,13 @@ void sr_handlepacket(struct sr_instance* sr,
       
       /* construct ethernet header */
       sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)reply_packet;
-      memcpy(reply_ehdr->ether_dhost, ehdr->ether_shost, sizeof(uint32_t));
-      memcpy(reply_ehdr->ether_shost, source_if->addr, sizeof(uint32_t));
+      memcpy(reply_ehdr->ether_dhost, ehdr->ether_shost, ETHER_ADDR_LEN);
+      memcpy(reply_ehdr->ether_shost, source_if->addr, ETHER_ADDR_LEN);
       reply_ehdr->ether_type = htons(ethertype_arp);
 
       /* construct arp header */
       sr_arp_hdr_t *reply_arp_hdr = (sr_arp_hdr_t *)(reply_packet + sizeof(sr_ethernet_hdr_t));
-      reply_arp_hdr->ar_hrd = htons(arp_hrd_ethernet);
-      reply_arp_hdr->ar_pro = htons(ethertype_ip);
-      reply_arp_hdr->ar_hln = ETHER_ADDR_LEN;
-      reply_arp_hdr->ar_pln = arp_hdr->ar_pln;
+      memcpy(reply_arp_hdr, arp_hdr, sizeof(sr_arp_hdr_t));
       reply_arp_hdr->ar_op = htons(arp_op_reply);
       memcpy(reply_arp_hdr->ar_sha, source_if->addr, ETHER_ADDR_LEN);
       reply_arp_hdr->ar_sip = source_if->ip;
@@ -119,6 +117,10 @@ void sr_handlepacket(struct sr_instance* sr,
       sr_send_packet(sr, reply_packet, reply_len, source_if->name);
       free(reply_packet);
     }
+  }
+  else if (ethtype == ethertype_ip) {
+    sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
+    print_hdr_ip(packet+sizeof(sr_ethernet_hdr_t));
   }
 
 }/* end sr_ForwardPacket */
