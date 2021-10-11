@@ -131,6 +131,8 @@ void sr_handlepacket(struct sr_instance* sr,
     else {
       /* Find out which entry in the routing table has the longest prefix match with the destination IP address. */
       struct sr_if *oif = get_interface_by_longest_prefix_match(sr, ip_hdr->ip_dst);
+      printf("%hu\n", oif->ip);
+      printf("%s\n", oif->name);
       struct sr_arpreq *req = sr_arpcache_queuereq(&(sr->cache), ip_hdr->ip_dst, packet, len, oif->name);
     }
   }
@@ -141,13 +143,16 @@ void sr_handlepacket(struct sr_instance* sr,
 struct sr_if* get_interface_by_longest_prefix_match(struct sr_instance* sr, uint32_t ip_dst) {
   struct sr_rt *entry = sr->routing_table;
   struct sr_rt *match;
-  uint32_t max_len = 0;
+  uint32_t diff = 0xFFFFFFFF;
   while (entry) {
     uint32_t netid = ntohl(entry->dest.s_addr) & ntohl(entry->mask.s_addr);
-    printf("%lu\n", netid);
+    if (diff > netid - ip_dst) {
+      diff = netid - ip_dst;
+      match = entry;
+    }
     entry = entry->next;
   }
-  return 0;
+  return entry;
 }
 
 struct sr_if* get_interface_by_ip(struct sr_instance* sr, uint32_t tip) {
