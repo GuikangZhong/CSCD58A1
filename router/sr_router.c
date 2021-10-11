@@ -23,7 +23,8 @@
 #include "sr_arpcache.h"
 #include "sr_utils.h"
 
-struct sr_if* find_interface(struct sr_instance* sr, uint32_t tip);
+struct sr_if* get_interface_by_ip(struct sr_instance* sr, uint32_t tip);
+struct sr_if* get_interface_by_longest_prefix_match(struct sr_instance* sr, uint32_t ip_dst);
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -92,12 +93,12 @@ void sr_handlepacket(struct sr_instance* sr,
     print_hdr_arp(packet+sizeof(sr_ethernet_hdr_t));
     /* In the case of an ARP request, you should only send an ARP reply if the target IP address is one of
      * your router's IP addresses */
-    struct sr_if *if_walker = find_interface(sr, arp_hdr->ar_tip);
+    struct sr_if *if_walker = get_interface_by_ip(sr, arp_hdr->ar_tip);
     if (ntohs(arp_hdr->ar_op) == arp_op_request && if_walker) {
       /* construct ARP reply */
       unsigned long reply_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
       uint8_t *reply_packet = (uint8_t *)malloc(reply_len);
-      struct sr_if* source_if = sr_get_interface(sr, interface);
+      struct sr_if *source_if = sr_get_interface(sr, interface);
       
       /* construct ethernet header */
       sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)reply_packet;
@@ -121,11 +122,35 @@ void sr_handlepacket(struct sr_instance* sr,
   else if (ethtype == ethertype_ip) {
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
     print_hdr_ip(packet+sizeof(sr_ethernet_hdr_t));
+    /* send packet to next_hop_ip */
+    struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
+    if (entry) {
+      /* use next_hop_ip->mac mapping in entry to send the packet
+        free entry */
+    }
+    else {
+      /* Find out which entry in the routing table has the longest prefix match with the destination IP address. */
+      struct sr_if *oif = get_interface_by_longest_prefix_match(sr, ip_hdr->ip_dst);
+      struct sr_arpreq *req = sr_arpcache_queuereq(&(sr->cache), ip_hdr->ip_dst, packet, len, oif->name);
+    }
   }
 
 }/* end sr_ForwardPacket */
 
-struct sr_if* find_interface(struct sr_instance* sr, uint32_t tip) {
+
+struct sr_if* get_interface_by_longest_prefix_match(struct sr_instance* sr, uint32_t ip_dst) {
+  struct sr_rt *entry = sr->routing_table;
+  struct sr_rt *match;
+  uint32_t max_len = 0;
+  while (entry) {
+    uint32_t netid = ntohl(entry->dest.s_addr) & ntohl(entry->mask.s_addr);
+    printf("%lu\n", netid);
+    entry = entry->next;
+  }
+  return 0;
+}
+
+struct sr_if* get_interface_by_ip(struct sr_instance* sr, uint32_t tip) {
   struct sr_if *if_walker = sr->if_list;
   while (if_walker) {
     if (if_walker->ip == tip) {

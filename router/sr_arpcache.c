@@ -20,6 +20,10 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
     /* Fill this in */
 }
 
+void handle_arpreq(struct sr_arpreq *req) {
+
+}
+
 /* You should not need to touch the rest of this code. */
 
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order.
