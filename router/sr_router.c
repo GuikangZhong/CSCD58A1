@@ -24,7 +24,7 @@
 #include "sr_utils.h"
 
 struct sr_if* get_interface_by_ip(struct sr_instance* sr, uint32_t tip);
-char* get_interface_by_longest_prefix_match(struct sr_instance* sr, uint32_t ip_dst);
+char* get_interface_by_LPM(struct sr_instance* sr, uint32_t ip_dst);
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -129,24 +129,25 @@ void sr_handlepacket(struct sr_instance* sr,
         free entry */
     }
     else {
-      /* Find out which entry in the routing table has the longest prefix match with the destination IP address. */
-      char *oif_name = get_interface_by_longest_prefix_match(sr, ip_hdr->ip_dst);
-      printf("%s\n", oif_name);
+      /* Find out which entry in the routing table has the longest prefix match 
+         with the destination IP address. */
+      char *oif_name = get_interface_by_LPM(sr, ip_hdr->ip_dst);
       struct sr_arpreq *req = sr_arpcache_queuereq(&(sr->cache), ip_hdr->ip_dst, packet, len, oif_name);
+      handle_arpreq(sr, req);
     }
   }
 
 }/* end sr_ForwardPacket */
 
-
-char* get_interface_by_longest_prefix_match(struct sr_instance* sr, uint32_t ip_dst) {
+/* Get interface name by longest prefix match */
+char* get_interface_by_LPM(struct sr_instance* sr, uint32_t ip_dst) {
   struct sr_rt *entry = sr->routing_table;
   struct sr_rt *match;
   uint32_t diff = 0xFFFFFFFF;
   while (entry) {
     uint32_t netid = ntohl(entry->dest.s_addr) & ntohl(entry->mask.s_addr);
-    if (diff > netid - ip_dst) {
-      diff = netid - ip_dst;
+    if (diff > netid - ntohl(ip_dst)) {
+      diff = netid - ntohl(ip_dst);
       match = entry;
     }
     entry = entry->next;
@@ -154,6 +155,7 @@ char* get_interface_by_longest_prefix_match(struct sr_instance* sr, uint32_t ip_
   return match->interface;
 }
 
+/* Get interface object by longest prefix match */
 struct sr_if* get_interface_by_ip(struct sr_instance* sr, uint32_t tip) {
   struct sr_if *if_walker = sr->if_list;
   while (if_walker) {

@@ -11,6 +11,8 @@
 #include "sr_if.h"
 #include "sr_protocol.h"
 
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req);
+
 /* 
   This function gets called every second. For each request sent out, we keep
   checking whether we should resend an request or destroy the arp request.
@@ -18,10 +20,52 @@
 */
 void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
     /* Fill this in */
+    struct sr_arpreq *req;
+    for (req=sr->cache.requests; req != NULL; req=req->next) {
+        handle_arpreq(sr, req);
+    }
 }
 
-void handle_arpreq(struct sr_arpreq *req) {
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
+    time_t curtime = time(NULL);
+    if (difftime(curtime, req->sent) > 1.0) {
+        if (req->times_sent >= 5) {
+            /* send icmp host unreachable to source addr of all pkts waiting
+               on this request 
+            sr_arpreq_destroy(req); */
+        }
+        else {
+            /* send arp request */
+            unsigned long len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
+            uint8_t *arpreq = (uint8_t *)malloc(len);
+            char *iname = req->packets->iface;
+            struct sr_if *oif = sr_get_interface(sr, iname);
+            
+            /* construct ethernet header */
+            sr_ethernet_hdr_t *request_ehdr = (sr_ethernet_hdr_t *)arpreq;
+            uint8_t ether_dhost[ETHER_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+            memcpy(request_ehdr->ether_dhost, ether_dhost, ETHER_ADDR_LEN);
+            memcpy(request_ehdr->ether_shost, oif->addr, ETHER_ADDR_LEN);
+            request_ehdr->ether_type = htons(ethertype_arp);
 
+            /* construct arp header */
+            sr_arp_hdr_t *request_arp_hdr = (sr_arp_hdr_t *)(arpreq + sizeof(sr_ethernet_hdr_t));
+            request_arp_hdr->ar_hrd = htons(arp_hrd_ethernet);
+            request_arp_hdr->ar_pro = htons(ethertype_ip);
+            request_arp_hdr->ar_hln = ETHER_ADDR_LEN;
+            request_arp_hdr->ar_pln = ip_hl;
+            request_arp_hdr->ar_op = htons(arp_op_request);
+            memcpy(request_arp_hdr->ar_sha, source_if->addr, ETHER_ADDR_LEN);
+            request_arp_hdr->ar_sip = source_if->ip;
+            memcpy(request_arp_hdr->ar_tha, arp_hdr->ar_sha, ETHER_ADDR_LEN);
+            request_arp_hdr->ar_tip = arp_hdr->ar_sip;
+
+            sr_send_packet(sr, arpreq, len, source_if->name);
+            free(arpreq);
+            req->sent = time(NULL);
+            req->times_sent++;
+        }
+    }
 }
 
 /* You should not need to touch the rest of this code. */
