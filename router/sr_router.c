@@ -113,7 +113,7 @@ void sr_handlepacket(struct sr_instance* sr,
       memcpy(reply_arp_hdr->ar_sha, source_if->addr, ETHER_ADDR_LEN);
       reply_arp_hdr->ar_sip = htonl(source_if->ip);
       memcpy(reply_arp_hdr->ar_tha, arp_hdr->ar_sha, ETHER_ADDR_LEN);
-      reply_arp_hdr->ar_tip = htonl(arp_hdr->ar_sip);
+      reply_arp_hdr->ar_tip = arp_hdr->ar_sip;
 
       sr_send_packet(sr, reply_packet, reply_len, source_if->name);
       free(reply_packet);
