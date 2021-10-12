@@ -53,7 +53,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
             request_arp_hdr->ar_hrd = htons(arp_hrd_ethernet);
             request_arp_hdr->ar_pro = htons(ethertype_ip);
             request_arp_hdr->ar_hln = ETHER_ADDR_LEN;
-            request_arp_hdr->ar_pln = ip_hl;
+            request_arp_hdr->ar_pln = 4;
             request_arp_hdr->ar_op = htons(arp_op_request);
             memcpy(request_arp_hdr->ar_sha, oif->addr, ETHER_ADDR_LEN);
             request_arp_hdr->ar_sip = htonl(oif->ip);

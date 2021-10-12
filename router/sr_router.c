@@ -132,7 +132,7 @@ void sr_handlepacket(struct sr_instance* sr,
       /* Find out which entry in the routing table has the longest prefix match 
          with the destination IP address. */
       char *oif_name = get_interface_by_LPM(sr, ip_hdr->ip_dst);
-      struct sr_arpreq *req = sr_arpcache_queuereq(&(sr->cache), ntonl(ip_hdr->ip_dst), packet, len, oif_name);
+      struct sr_arpreq *req = sr_arpcache_queuereq(&(sr->cache), ntohl(ip_hdr->ip_dst), packet, len, oif_name);
       handle_arpreq(sr, req);
     }
   }
