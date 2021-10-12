@@ -31,8 +31,8 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
     if (difftime(curtime, req->sent) > 1.0) {
         if (req->times_sent >= 5) {
             /* send icmp host unreachable to source addr of all pkts waiting
-               on this request 
-            sr_arpreq_destroy(req); */
+               on this request  */
+            sr_arpreq_destroy(&(sr->cache), req);
         }
         else {
             /* send arp request */
@@ -56,7 +56,7 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
             request_arp_hdr->ar_pln = 4;
             request_arp_hdr->ar_op = htons(arp_op_request);
             memcpy(request_arp_hdr->ar_sha, oif->addr, ETHER_ADDR_LEN);
-            request_arp_hdr->ar_sip = htonl(oif->ip);
+            request_arp_hdr->ar_sip = oif->ip;
             uint8_t zeros[ETHER_ADDR_LEN] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
             memcpy(request_arp_hdr->ar_tha, zeros, ETHER_ADDR_LEN);
             request_arp_hdr->ar_tip = htonl(req->ip);

@@ -118,10 +118,25 @@ void sr_handlepacket(struct sr_instance* sr,
       sr_send_packet(sr, reply_packet, reply_len, source_if->name);
       free(reply_packet);
     }
+    /* In the case of an ARP reply, you should only cache the entry if the target IP
+       address is one of your router's IP addresses. */
+    else if (ntohs(arp_hdr->ar_op) == arp_op_reply && if_walker) {
+      struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, ntohl(arp_hdr->ar_sip));
+      struct sr_packet *packet;
+      if (arpreq) {
+        for (packet=arpreq->packets; packet != NULL; packet=packet->next) {
+          sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)(packet->buf);
+          memcpy(ehdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
+          sr_send_packet(sr, packet->buf, packet->len, packet->iface);
+        }
+        sr_arpreq_destroy(&(sr->cache), arpreq);
+      }
+    }
   }
   else if (ethtype == ethertype_ip) {
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
     print_hdr_ip(packet+sizeof(sr_ethernet_hdr_t));
+    sr_arpcache_dump(&(sr->cache));
     /* send packet to next_hop_ip */
     struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
     if (entry) {
