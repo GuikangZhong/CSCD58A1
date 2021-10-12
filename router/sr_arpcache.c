@@ -55,12 +55,13 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
             request_arp_hdr->ar_hln = ETHER_ADDR_LEN;
             request_arp_hdr->ar_pln = ip_hl;
             request_arp_hdr->ar_op = htons(arp_op_request);
-            memcpy(request_arp_hdr->ar_sha, source_if->addr, ETHER_ADDR_LEN);
-            request_arp_hdr->ar_sip = source_if->ip;
-            memcpy(request_arp_hdr->ar_tha, arp_hdr->ar_sha, ETHER_ADDR_LEN);
-            request_arp_hdr->ar_tip = arp_hdr->ar_sip;
+            memcpy(request_arp_hdr->ar_sha, oif->addr, ETHER_ADDR_LEN);
+            request_arp_hdr->ar_sip = htonl(oif->ip);
+            uint8_t zeros[ETHER_ADDR_LEN] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+            memcpy(request_arp_hdr->ar_tha, zeros, ETHER_ADDR_LEN);
+            request_arp_hdr->ar_tip = htonl(req->ip);
 
-            sr_send_packet(sr, arpreq, len, source_if->name);
+            sr_send_packet(sr, arpreq, len, iname);
             free(arpreq);
             req->sent = time(NULL);
             req->times_sent++;

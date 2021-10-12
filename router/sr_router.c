@@ -111,9 +111,9 @@ void sr_handlepacket(struct sr_instance* sr,
       memcpy(reply_arp_hdr, arp_hdr, sizeof(sr_arp_hdr_t));
       reply_arp_hdr->ar_op = htons(arp_op_reply);
       memcpy(reply_arp_hdr->ar_sha, source_if->addr, ETHER_ADDR_LEN);
-      reply_arp_hdr->ar_sip = source_if->ip;
+      reply_arp_hdr->ar_sip = htonl(source_if->ip);
       memcpy(reply_arp_hdr->ar_tha, arp_hdr->ar_sha, ETHER_ADDR_LEN);
-      reply_arp_hdr->ar_tip = arp_hdr->ar_sip;
+      reply_arp_hdr->ar_tip = htonl(arp_hdr->ar_sip);
 
       sr_send_packet(sr, reply_packet, reply_len, source_if->name);
       free(reply_packet);
@@ -132,7 +132,7 @@ void sr_handlepacket(struct sr_instance* sr,
       /* Find out which entry in the routing table has the longest prefix match 
          with the destination IP address. */
       char *oif_name = get_interface_by_LPM(sr, ip_hdr->ip_dst);
-      struct sr_arpreq *req = sr_arpcache_queuereq(&(sr->cache), ip_hdr->ip_dst, packet, len, oif_name);
+      struct sr_arpreq *req = sr_arpcache_queuereq(&(sr->cache), ntonl(ip_hdr->ip_dst), packet, len, oif_name);
       handle_arpreq(sr, req);
     }
   }
