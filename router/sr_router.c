@@ -98,7 +98,7 @@ void sr_handlepacket(struct sr_instance* sr,
   uint16_t ethtype = ethertype(packet);
   struct sr_if *source_if = sr_get_interface(sr, interface);
   
-  // case1: is an arp request
+  /* case1: is an arp request */
   if (ethtype == ethertype_arp) {
     sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
     print_hdr_arp(packet+sizeof(sr_ethernet_hdr_t));
@@ -106,7 +106,7 @@ void sr_handlepacket(struct sr_instance* sr,
      * your router's IP addresses */
     struct sr_if *target_if = get_interface_by_ip(sr, arp_hdr->ar_tip);
 
-    // case1.1: the request destinates to an router interface
+    /* case1.1: the request destinates to an router interface */
     if (ntohs(arp_hdr->ar_op) == arp_op_request && target_if) {
       fprintf(stderr, "---------case1.1----------\n");
       /* construct ARP reply */
@@ -135,7 +135,7 @@ void sr_handlepacket(struct sr_instance* sr,
     /* In the case of an ARP reply, you should only cache the entry if the target IP
        address is one of your router's IP addresses. */
     
-    // case1.2: the request does not destinate to an router interface
+    /* case1.2: the request does not destinate to an router interface */
     else if (ntohs(arp_hdr->ar_op) == arp_op_reply && target_if) {
       fprintf(stderr, "---------case1.2----------\n");
       fprintf(stderr, "arpcache--before:\n");
@@ -156,7 +156,7 @@ void sr_handlepacket(struct sr_instance* sr,
     }
   }
 
-  // case2: is an ip request
+  /* case2: is an ip request */
   else if (ethtype == ethertype_ip) {
 
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
@@ -165,11 +165,11 @@ void sr_handlepacket(struct sr_instance* sr,
     sr_arpcache_dump(&(sr->cache));
 
     /* If it is sent to one of your router's IP addresses, */
-    // case2.1: the request destinates to an router interface
+    /* case2.1: the request destinates to an router interface */
     if (if_walker) {
       fprintf(stderr, "---------case2.1----------\n");
     }
-    // case2.2: the request does not destinate to an router interface
+    /* case2.2: the request does not destinate to an router interface */
     else {
       fprintf(stderr, "---------case2.2----------\n");
       int success = handle_chksum(ip_hdr);
@@ -197,7 +197,7 @@ void sr_handlepacket(struct sr_instance* sr,
     }
   }
 
-  // case3: forwading
+  /* case3: forwading */
   else {
 
   }
