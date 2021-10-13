@@ -176,7 +176,7 @@ void sr_handlepacket(struct sr_instance* sr,
       fprintf(stderr, "---------case2.1----------\n");
       /* If the packet is an ICMP echo request and its checksum is valid, 
        * send an ICMP echo reply to the sending host. */
-      if ((uint8_t) ip_protocol(ip_hdr) == ip_protocol_icmp) {
+      if (ip_protocol(packet+sizeof(sr_ethernet_hdr_t)) == ip_protocol_icmp) {
 
         sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(ip_hdr+sizeof(sr_ip_hdr_t));
         uint8_t *icmp_type = (uint8_t *)icmp_hdr;
