@@ -155,6 +155,10 @@ void sr_handlepacket(struct sr_instance* sr,
       fprintf(stdout, "arpcache--after:\n");
       sr_arpcache_dump(&(sr->cache));
     }
+
+    else {
+      fprintf(stdout, "---------case1.3----------\n");
+    }
   }
 
   /* case2: is an ip request */
@@ -200,7 +204,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
   /* case3: forwading */
   else {
-
+     fprintf(stdout, "---------case3----------\n");
   }
 
 }/* end sr_ForwardPacket */
