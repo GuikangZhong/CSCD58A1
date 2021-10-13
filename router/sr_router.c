@@ -177,10 +177,13 @@ void sr_handlepacket(struct sr_instance* sr,
       /* If the packet is an ICMP echo request and its checksum is valid, 
        * send an ICMP echo reply to the sending host. */
       if (ip_protocol(ip_hdr) == ip_protocol_icmp) {
-        int success = handle_chksum(ip_hdr);
-        if (success == -1) return;
 
         sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(ip_hdr+sizeof(sr_ip_hdr_t));
+        uint8_t *icmp_type = (uint8_t *)icmp_hdr;
+
+        if (*icmp_type = (uint8_t) 8) {
+          fprintf(stderr, "sending is an ICMP echo response\n");
+        }
 
 
       }
@@ -188,7 +191,7 @@ void sr_handlepacket(struct sr_instance* sr,
       /* If the packet contains a TCP or UDP payload, send an 
        * ICMP port unreachable to the sending host. */
       else {
-
+        fprintf(stderr, "sending ICMP unreachable\n");
       }
     }
     /* case2.2: the request does not destinate to an router interface */
