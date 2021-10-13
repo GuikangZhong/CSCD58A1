@@ -214,6 +214,7 @@ void sr_handlepacket(struct sr_instance* sr,
           sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(icmp_reply+sizeof(sr_ethernet_hdr_t)+sizeof(sr_ip_hdr_t));
           reply_icmp_hdr->icmp_type = 0;
           reply_icmp_hdr->icmp_code = 0;
+          reply_icmp_hdr->icmp_sum = 0;
           reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_hdr_t));
 
           fprintf(stdout, "sending ICMP echo reply\n");
@@ -232,6 +233,7 @@ void sr_handlepacket(struct sr_instance* sr,
           sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(reply_ip_hdr+sizeof(sr_ip_hdr_t));
           reply_icmp_hdr->icmp_type = 3;
           reply_icmp_hdr->icmp_code = 3;
+          reply_icmp_hdr->icmp_sum = 0;
           reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_hdr_t));
 
           fprintf(stdout, "sending ICMP unreachable\n");
