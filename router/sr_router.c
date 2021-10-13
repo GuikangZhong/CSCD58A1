@@ -25,6 +25,7 @@
 
 struct sr_if* get_interface_by_ip(struct sr_instance* sr, uint32_t tip);
 char* get_interface_by_LPM(struct sr_instance* sr, uint32_t ip_dst);
+int sanity_check(uint8_t *buf, unsigned int length);
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -83,6 +84,14 @@ void sr_handlepacket(struct sr_instance* sr,
   printf("*** -> Received packet of length %d \n",len);
 
   /* fill in code here */
+
+  /* sanity check */
+  int success = sanity_check(packet, len);
+  if (success != 0) {
+    fprintf(stderr, "Failed to handle packet\n");
+    return;
+  }
+
   /* get the ethernet header */
   sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)packet;
   uint16_t ethtype = ethertype(packet);
@@ -134,28 +143,48 @@ void sr_handlepacket(struct sr_instance* sr,
     }
   }
   else if (ethtype == ethertype_ip) {
+
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
+    struct sr_if *if_walker = get_interface_by_ip(sr, ip_hdr->ip_dst);
     print_hdr_ip(packet+sizeof(sr_ethernet_hdr_t));
     sr_arpcache_dump(&(sr->cache));
 
-    /* Find out which entry in the routing table has the longest prefix match 
-        with the destination IP address. */
-    char *oif_name = get_interface_by_LPM(sr, ip_hdr->ip_dst);
-    struct sr_if *oif = sr_get_interface(sr, oif_name);
+    if (if_walker) {
 
-    /* send packet to next_hop_ip */
-    struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
-    if (entry) {
-      /* use next_hop_ip->mac mapping in entry to send the packet
-        free entry */
-      memcpy(ehdr->ether_dhost, entry->mac, ETHER_ADDR_LEN);
-      memcpy(ehdr->ether_shost, oif->addr, ETHER_ADDR_LEN);
-      sr_send_packet(sr, packet, len, oif_name);
-      free(entry);
     }
+
     else {
-      struct sr_arpreq *req = sr_arpcache_queuereq(&(sr->cache), ntohl(ip_hdr->ip_dst), packet, len, oif_name);
-      handle_arpreq(sr, req);
+
+      /* inspect checksum */
+      uint16_t sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
+      if (sum != ip_hdr->ip_sum) {
+        fprintf(stderr, "Incorrect checksum\n");
+        return;
+      }
+
+      /* decrement TTL by 1 */
+      ip_hdr->ip_ttl--;
+      ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
+
+      /* Find out which entry in the routing table has the longest prefix match 
+         with the destination IP address. */
+      char *oif_name = get_interface_by_LPM(sr, ip_hdr->ip_dst);
+      struct sr_if *oif = sr_get_interface(sr, oif_name);
+
+      /* send packet to next_hop_ip */
+      struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
+      if (entry) {
+        /* use next_hop_ip->mac mapping in entry to send the packet
+          free entry */
+        memcpy(ehdr->ether_dhost, entry->mac, ETHER_ADDR_LEN);
+        memcpy(ehdr->ether_shost, oif->addr, ETHER_ADDR_LEN);
+        sr_send_packet(sr, packet, len, oif_name);
+        free(entry);
+      }
+      else {
+        struct sr_arpreq *req = sr_arpcache_queuereq(&(sr->cache), ntohl(ip_hdr->ip_dst), packet, len, oif_name);
+        handle_arpreq(sr, req);
+      }
     }
   }
 
@@ -185,6 +214,36 @@ struct sr_if* get_interface_by_ip(struct sr_instance* sr, uint32_t tip) {
       return if_walker;
     }
     if_walker = if_walker->next;
+  }
+  return 0;
+}
+
+int sanity_check(uint8_t *buf, unsigned int length) {
+  int minlength = sizeof(sr_ethernet_hdr_t);
+  if (length < minlength) {
+    return -1;
+  }
+  uint16_t ethtype = ethertype(buf);
+  if (ethtype == ethertype_ip) { /* IP */
+    minlength += sizeof(sr_ip_hdr_t);
+    if (length < minlength) {
+      return -1;
+    }
+
+    uint8_t ip_proto = ip_protocol(buf + sizeof(sr_ethernet_hdr_t));
+    if (ip_proto == ip_protocol_icmp) { /* ICMP */
+      minlength += sizeof(sr_icmp_hdr_t);
+      if (length < minlength)
+        return -1;
+    }
+  }
+  else if (ethtype == ethertype_arp) { /* ARP */
+    minlength += sizeof(sr_arp_hdr_t);
+    if (length < minlength)
+      return -1;
+  }
+  else {
+    return -1;
   }
   return 0;
 }
