@@ -124,8 +124,8 @@ void sr_handlepacket(struct sr_instance* sr,
       memcpy(reply_arp_hdr, arp_hdr, sizeof(sr_arp_hdr_t));
       reply_arp_hdr->ar_op = htons(arp_op_reply);
       /* scource */
-      memcpy(reply_arp_hdr->ar_sha, target_if->addr, ETHER_ADDR_LEN);
-      reply_arp_hdr->ar_sip = target_if->ip;
+      memcpy(reply_arp_hdr->ar_sha, source_if->addr, ETHER_ADDR_LEN);
+      reply_arp_hdr->ar_sip = source_if->ip;
       /* destination*/
       memcpy(reply_arp_hdr->ar_tha, arp_hdr->ar_sha, ETHER_ADDR_LEN);
       reply_arp_hdr->ar_tip = arp_hdr->ar_sip;
@@ -159,7 +159,6 @@ void sr_handlepacket(struct sr_instance* sr,
     /* case1.3: the ARP packet does not destinate to an router interface */
     else {
       fprintf(stdout, "---------case1.3----------\n");
-
     }
   }
 
@@ -176,10 +175,21 @@ void sr_handlepacket(struct sr_instance* sr,
     if (target_if) {
       fprintf(stderr, "---------case2.1----------\n");
       /* If the packet is an ICMP echo request and its checksum is valid, 
-        send an ICMP echo reply to the sending host. */
+       * send an ICMP echo reply to the sending host. */
+      if (ip_protocol(ip_hdr) == ip_protocol_icmp) {
+        int success = handle_chksum(ip_hdr);
+        if (success == -1) return;
+
+        sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(ip_hdr+sizeof(sr_ip_hdr_t));
+
+
+      }
       
       /* If the packet contains a TCP or UDP payload, send an 
-        ICMP port unreachable to the sending host. */
+       * ICMP port unreachable to the sending host. */
+      else {
+
+      }
     }
     /* case2.2: the request does not destinate to an router interface */
     else {
