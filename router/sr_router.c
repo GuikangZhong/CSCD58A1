@@ -123,12 +123,15 @@ void sr_handlepacket(struct sr_instance* sr,
       sr_arp_hdr_t *reply_arp_hdr = (sr_arp_hdr_t *)(reply_packet + sizeof(sr_ethernet_hdr_t));
       memcpy(reply_arp_hdr, arp_hdr, sizeof(sr_arp_hdr_t));
       reply_arp_hdr->ar_op = htons(arp_op_reply);
-      memcpy(reply_arp_hdr->ar_sha, source_if->addr, ETHER_ADDR_LEN);
-      reply_arp_hdr->ar_sip = source_if->ip;
+      /* scource */
+      memcpy(reply_arp_hdr->ar_sha, target_if->addr, ETHER_ADDR_LEN);
+      reply_arp_hdr->ar_sip = target_if->ip;
+      /* destination*/
       memcpy(reply_arp_hdr->ar_tha, arp_hdr->ar_sha, ETHER_ADDR_LEN);
       reply_arp_hdr->ar_tip = arp_hdr->ar_sip;
 
       fprintf(stdout, "sending ARP reply packet\n");
+      print_hdrs(reply_packet, reply_len);
       sr_send_packet(sr, reply_packet, reply_len, source_if->name);
       free(reply_packet);
     }
@@ -173,19 +176,11 @@ void sr_handlepacket(struct sr_instance* sr,
     /* case2.1: the request destinates to an router interface */
     if (target_if) {
       fprintf(stderr, "---------case2.1----------\n");
-      int success = handle_chksum(ip_hdr);
-      if (success == -1) return;
+      /* If the packet is an ICMP echo request and its checksum is valid, 
+        send an ICMP echo reply to the sending host. */
       
-      /* send packet to next_hop_ip */
-      struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
-      if (entry) {
-        /* use next_hop_ip->mac mapping in entry to send the packet
-          free entry */
-        memcpy(ehdr->ether_dhost, entry->mac, ETHER_ADDR_LEN);
-        memcpy(ehdr->ether_shost, target_if->addr, ETHER_ADDR_LEN);
-        sr_send_packet(sr, packet, len, target_if->name);
-        free(entry);
-      }
+      /* If the packet contains a TCP or UDP payload, send an 
+        ICMP port unreachable to the sending host. */
     }
     /* case2.2: the request does not destinate to an router interface */
     else {
@@ -204,7 +199,7 @@ void sr_handlepacket(struct sr_instance* sr,
         /* use next_hop_ip->mac mapping in entry to send the packet
           free entry */
         memcpy(ehdr->ether_dhost, entry->mac, ETHER_ADDR_LEN);
-        memcpy(ehdr->ether_shost, oif->addr, ETHER_ADDR_LEN);
+        /* memcpy(ehdr->ether_shost, oif->addr, ETHER_ADDR_LEN); */
         sr_send_packet(sr, packet, len, oif_name);
         free(entry);
       }
@@ -233,7 +228,7 @@ char* get_interface_by_LPM(struct sr_instance* sr, uint32_t ip_dst) {
   return match->interface;
 }
 
-/* Get interface object by longest prefix match */
+/* Get interface object by exact match */
 struct sr_if* get_interface_by_ip(struct sr_instance* sr, uint32_t tip) {
   struct sr_if *if_walker = sr->if_list;
   while (if_walker) {
