@@ -165,14 +165,27 @@ void sr_handlepacket(struct sr_instance* sr,
   else if (ethtype == ethertype_ip) {
 
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
-    struct sr_if *if_walker = get_interface_by_ip(sr, ip_hdr->ip_dst);
+    struct sr_if *target_if = get_interface_by_ip(sr, ip_hdr->ip_dst);
     print_hdr_ip(packet+sizeof(sr_ethernet_hdr_t));
     /* sr_arpcache_dump(&(sr->cache)); */
 
     /* If it is sent to one of your router's IP addresses, */
     /* case2.1: the request destinates to an router interface */
-    if (if_walker) {
+    if (target_if) {
       fprintf(stderr, "---------case2.1----------\n");
+      int success = handle_chksum(ip_hdr);
+      if (success == -1) return;
+      
+      /* send packet to next_hop_ip */
+      struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
+      if (entry) {
+        /* use next_hop_ip->mac mapping in entry to send the packet
+          free entry */
+        memcpy(ehdr->ether_dhost, entry->mac, ETHER_ADDR_LEN);
+        memcpy(ehdr->ether_shost, target_if->addr, ETHER_ADDR_LEN);
+        sr_send_packet(sr, packet, len, target_if->name);
+        free(entry);
+      }
     }
     /* case2.2: the request does not destinate to an router interface */
     else {
@@ -200,11 +213,6 @@ void sr_handlepacket(struct sr_instance* sr,
         handle_arpreq(sr, req);
       }
     }
-  }
-
-  /* case3: forwading */
-  else {
-     fprintf(stdout, "---------case3----------\n");
   }
 
 }/* end sr_ForwardPacket */
