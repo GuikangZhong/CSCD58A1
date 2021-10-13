@@ -163,7 +163,7 @@ void sr_handlepacket(struct sr_instance* sr,
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
     struct sr_if *if_walker = get_interface_by_ip(sr, ip_hdr->ip_dst);
     print_hdr_ip(packet+sizeof(sr_ethernet_hdr_t));
-    sr_arpcache_dump(&(sr->cache));
+    /* sr_arpcache_dump(&(sr->cache)); */
 
     /* If it is sent to one of your router's IP addresses, */
     /* case2.1: the request destinates to an router interface */
