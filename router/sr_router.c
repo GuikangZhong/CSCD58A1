@@ -204,6 +204,7 @@ void sr_handlepacket(struct sr_instance* sr,
           uint16_t sum = icmp_hdr->icmp_sum;
           icmp_hdr->icmp_sum = 0;
           icmp_hdr->icmp_sum = cksum(icmp_hdr, sizeof(sr_icmp_hdr_t));
+          fprintf(stderr, "computed cksum %d\n", icmp_hdr->icmp_sum);
           if (sum != icmp_hdr->icmp_sum) {
             fprintf(stderr, "Incorrect checksum\n");
             return;
