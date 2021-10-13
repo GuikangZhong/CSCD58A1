@@ -198,13 +198,17 @@ void sr_handlepacket(struct sr_instance* sr,
       if (ip_protocol(packet+sizeof(sr_ethernet_hdr_t)) == ip_protocol_icmp) {
         fprintf(stderr, "received an ICMP request\n");
         sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t)+sizeof(sr_ip_hdr_t));
-        print_hdr_icmp(icmp_hdr);
+        print_hdr_icmp((uint8_t *)icmp_hdr);
         if (icmp_hdr->icmp_type == (uint8_t)8) {
           fprintf(stderr, "sending an ICMP echo response\n");
-          if (icmp_hdr->icmp_sum != cksum(icmp_hdr, sizeof(sr_icmp_hdr_t))) {
-            fprintf(stderr, "Incorrect ICMP checksum\n");
+          uint16_t sum = icmp_hdr->icmp_sum;
+          icmp_hdr->icmp_sum = 0;
+          icmp_hdr->icmp_sum = cksum(icmp_hdr, sizeof(sr_icmp_hdr_t));
+          if (sum != icmp_hdr->icmp_sum) {
+            fprintf(stderr, "Incorrect checksum\n");
             return;
           }
+         
           /* construct icmp echo response */
           sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(reply_ip_hdr+sizeof(sr_ip_hdr_t));
           reply_icmp_hdr->icmp_type = 0;
