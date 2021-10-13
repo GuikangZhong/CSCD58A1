@@ -129,11 +129,15 @@ void sr_handlepacket(struct sr_instance* sr,
     /* In the case of an ARP reply, you should only cache the entry if the target IP
        address is one of your router's IP addresses. */
     else if (ntohs(arp_hdr->ar_op) == arp_op_reply && if_walker) {
-      struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
-      struct sr_packet *packet;
+      struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, ntohl(arp_hdr->ar_sip));
       if (arpreq) {
+        struct sr_packet *packet;
         for (packet=arpreq->packets; packet != NULL; packet=packet->next) {
           sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)(packet->buf);
+
+          int success = handle_chksum((sr_ip_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t)));
+          if (success == -1) return;
+
           memcpy(ehdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
           memcpy(ehdr->ether_shost, source_if->addr, ETHER_ADDR_LEN);
           sr_send_packet(sr, packet->buf, packet->len, packet->iface);
@@ -154,17 +158,6 @@ void sr_handlepacket(struct sr_instance* sr,
     }
 
     else {
-
-      /* inspect checksum */
-      uint16_t sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
-      if (sum != ip_hdr->ip_sum) {
-        fprintf(stderr, "Incorrect checksum\n");
-        return;
-      }
-
-      /* decrement TTL by 1 */
-      ip_hdr->ip_ttl--;
-      ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
 
       /* Find out which entry in the routing table has the longest prefix match 
          with the destination IP address. */
@@ -216,6 +209,24 @@ struct sr_if* get_interface_by_ip(struct sr_instance* sr, uint32_t tip) {
     if_walker = if_walker->next;
   }
   return 0;
+}
+
+int handle_chksum(sr_ip_hdr_t *ip_hdr) {
+    /* inspect checksum */
+    uint16_t sum = ip_hdr->ip_sum;
+    ip_hdr->ip_sum = 0;
+    ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
+    if (sum != ip_hdr->ip_sum) {
+      fprintf(stderr, "Incorrect checksum\n");
+      return -1;
+    }
+
+    /* decrement TTL by 1 */
+    ip_hdr->ip_ttl--;
+    ip_hdr->ip_sum = 0;
+    ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
+    
+    return 0;
 }
 
 int sanity_check(uint8_t *buf, unsigned int length) {
