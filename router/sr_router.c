@@ -207,7 +207,7 @@ void sr_handlepacket(struct sr_instance* sr,
           fprintf(stderr, "computed cksum %d\n", icmp_hdr->icmp_sum);
           if (sum != icmp_hdr->icmp_sum) {
             fprintf(stderr, "Incorrect checksum\n");
-            return;
+            /* return; */
           }
          
           /* construct icmp echo response */
