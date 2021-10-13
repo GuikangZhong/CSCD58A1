@@ -211,8 +211,9 @@ void sr_handlepacket(struct sr_instance* sr,
           }
          
           /* construct icmp echo response */
-          sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(reply_ip_hdr+sizeof(sr_ip_hdr_t));
+          sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(icmp_reply+sizeof(sr_ethernet_hdr_t)+sizeof(sr_ip_hdr_t));
           reply_icmp_hdr->icmp_type = 0;
+          reply_icmp_hdr->icmp_code = 0;
           reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_hdr_t));
 
           fprintf(stdout, "sending ICMP echo reply\n");
