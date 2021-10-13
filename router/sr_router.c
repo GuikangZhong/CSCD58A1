@@ -196,11 +196,11 @@ void sr_handlepacket(struct sr_instance* sr,
       /* If the packet is an ICMP echo request and its checksum is valid, 
        * send an ICMP echo reply to the sending host. */
       if (ip_protocol(packet+sizeof(sr_ethernet_hdr_t)) == ip_protocol_icmp) {
-
+        fprintf(stderr, "received an ICMP request\n");
         sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(ip_hdr+sizeof(sr_ip_hdr_t));
-
-        if (icmp_hdr->icmp_type == 8) {
-          fprintf(stderr, "sending is an ICMP echo response\n");
+        print_hdr_icmp((uint8_t *)icmp_hdr);
+        if (icmp_hdr->icmp_type == (uint8_t)8) {
+          fprintf(stderr, "sending an ICMP echo response\n");
           if (icmp_hdr->icmp_sum != cksum(icmp_hdr, sizeof(sr_icmp_hdr_t))) {
             fprintf(stderr, "Incorrect ICMP checksum\n");
             return;
