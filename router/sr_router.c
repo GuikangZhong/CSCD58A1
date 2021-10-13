@@ -26,6 +26,7 @@
 struct sr_if* get_interface_by_ip(struct sr_instance* sr, uint32_t tip);
 char* get_interface_by_LPM(struct sr_instance* sr, uint32_t ip_dst);
 int sanity_check(uint8_t *buf, unsigned int length);
+int handle_chksum(sr_ip_hdr_t *ip_hdr);
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -134,10 +135,6 @@ void sr_handlepacket(struct sr_instance* sr,
         struct sr_packet *packet;
         for (packet=arpreq->packets; packet != NULL; packet=packet->next) {
           sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)(packet->buf);
-
-          int success = handle_chksum((sr_ip_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t)));
-          if (success == -1) return;
-
           memcpy(ehdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
           memcpy(ehdr->ether_shost, source_if->addr, ETHER_ADDR_LEN);
           sr_send_packet(sr, packet->buf, packet->len, packet->iface);
@@ -153,11 +150,15 @@ void sr_handlepacket(struct sr_instance* sr,
     print_hdr_ip(packet+sizeof(sr_ethernet_hdr_t));
     sr_arpcache_dump(&(sr->cache));
 
+    /* If it is sent to one of your router's IP addresses, */
     if (if_walker) {
 
     }
 
     else {
+
+      int success = handle_chksum(ip_hdr);
+      if (success == -1) return;
 
       /* Find out which entry in the routing table has the longest prefix match 
          with the destination IP address. */
