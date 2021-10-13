@@ -181,7 +181,7 @@ void sr_handlepacket(struct sr_instance* sr,
         sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(ip_hdr+sizeof(sr_ip_hdr_t));
         uint8_t *icmp_type = (uint8_t *)icmp_hdr;
 
-        if (*icmp_type = (uint8_t) 8) {
+        if (*icmp_type == (uint8_t) 8) {
           fprintf(stderr, "sending is an ICMP echo response\n");
         }
 
