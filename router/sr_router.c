@@ -111,16 +111,16 @@ void sr_handlepacket(struct sr_instance* sr,
       fprintf(stdout, "---------case1.1----------\n");
       /* construct ARP reply */
       unsigned long reply_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
-      uint8_t *reply_packet = (uint8_t *)malloc(reply_len);
+      uint8_t *arp_reply = (uint8_t *)malloc(reply_len);
       
       /* construct ethernet header */
-      sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)reply_packet;
+      sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)arp_reply;
       memcpy(reply_ehdr->ether_dhost, ehdr->ether_shost, ETHER_ADDR_LEN);
       memcpy(reply_ehdr->ether_shost, source_if->addr, ETHER_ADDR_LEN);
       reply_ehdr->ether_type = htons(ethertype_arp);
 
       /* construct arp header */
-      sr_arp_hdr_t *reply_arp_hdr = (sr_arp_hdr_t *)(reply_packet + sizeof(sr_ethernet_hdr_t));
+      sr_arp_hdr_t *reply_arp_hdr = (sr_arp_hdr_t *)(arp_reply + sizeof(sr_ethernet_hdr_t));
       memcpy(reply_arp_hdr, arp_hdr, sizeof(sr_arp_hdr_t));
       reply_arp_hdr->ar_op = htons(arp_op_reply);
       /* scource */
@@ -131,9 +131,9 @@ void sr_handlepacket(struct sr_instance* sr,
       reply_arp_hdr->ar_tip = arp_hdr->ar_sip;
 
       fprintf(stdout, "sending ARP reply packet\n");
-      print_hdrs(reply_packet, reply_len);
-      sr_send_packet(sr, reply_packet, reply_len, source_if->name);
-      free(reply_packet);
+      print_hdrs(arp_reply, reply_len);
+      sr_send_packet(sr, arp_reply, reply_len, source_if->name);
+      free(arp_reply);
     }
     /* case1.2: the ARP reply destinates to an router interface
      * In the case of an ARP reply, you should only cache the entry if the target IP
@@ -174,24 +174,64 @@ void sr_handlepacket(struct sr_instance* sr,
     /* case2.1: the request destinates to an router interface */
     if (target_if) {
       fprintf(stderr, "---------case2.1----------\n");
+
+      /* construct ICMP reply */
+      unsigned long reply_len = sizeof(sr_ethernet_hdr_t)+sizeof(sr_arp_hdr_t)+sizeof(sr_icmp_hdr_t);
+      uint8_t *icmp_reply = (uint8_t *)malloc(reply_len);
+      
+      /* construct ethernet header */
+      sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)icmp_reply;
+      memcpy(reply_ehdr->ether_dhost, ehdr->ether_shost, ETHER_ADDR_LEN);
+      memcpy(reply_ehdr->ether_shost, source_if->addr, ETHER_ADDR_LEN);
+      reply_ehdr->ether_type = htons(ethertype_ip);
+
+      /* construct ip header */
+      sr_ip_hdr_t *reply_ip_hdr = (sr_ip_hdr_t *)(icmp_reply+sizeof(sr_ethernet_hdr_t));
+      memcpy(reply_ip_hdr, ip_hdr, sizeof(sr_ip_hdr_t));
+      reply_ip_hdr->ip_src = ip_hdr->ip_dst;
+      reply_ip_hdr->ip_dst = ip_hdr->ip_src;
+      reply_ip_hdr->ip_p = ip_protocol_icmp;
+      reply_ip_hdr->ip_sum = cksum(reply_ip_hdr, sizeof(sr_ip_hdr_t));
+
       /* If the packet is an ICMP echo request and its checksum is valid, 
        * send an ICMP echo reply to the sending host. */
       if (ip_protocol(packet+sizeof(sr_ethernet_hdr_t)) == ip_protocol_icmp) {
 
         sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(ip_hdr+sizeof(sr_ip_hdr_t));
-        uint8_t *icmp_type = (uint8_t *)icmp_hdr;
 
-        if (*icmp_type == (uint8_t) 8) {
+        if (icmp_hdr->icmp_type == 8) {
           fprintf(stderr, "sending is an ICMP echo response\n");
+          if (icmp_hdr->icmp_sum != cksum(icmp_hdr, sizeof(sr_icmp_hdr_t))) {
+            fprintf(stderr, "Incorrect ICMP checksum\n");
+            return;
+          }
+          /* construct icmp echo response */
+          sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(reply_ip_hdr+sizeof(sr_ip_hdr_t));
+          reply_icmp_hdr->icmp_type = 0;
+          reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_hdr_t));
+
+          fprintf(stdout, "sending ICMP echo reply\n");
+          print_hdrs(icmp_reply, reply_len);
+          sr_send_packet(sr, icmp_reply, reply_len, source_if->name);
+          free(icmp_reply);
         }
 
-
       }
-      
       /* If the packet contains a TCP or UDP payload, send an 
        * ICMP port unreachable to the sending host. */
       else {
         fprintf(stderr, "sending ICMP unreachable\n");
+
+        /* construct icmp echo response */
+          sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(reply_ip_hdr+sizeof(sr_ip_hdr_t));
+          reply_icmp_hdr->icmp_type = 3;
+          reply_icmp_hdr->icmp_code = 3;
+          reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_hdr_t));
+
+          fprintf(stdout, "sending ICMP unreachable\n");
+          print_hdrs(icmp_reply, reply_len);
+          sr_send_packet(sr, icmp_reply, reply_len, source_if->name);
+          free(icmp_reply);
       }
     }
     /* case2.2: the request does not destinate to an router interface */
