@@ -53,6 +53,7 @@ void sr_init(struct sr_instance* sr)
     pthread_create(&thread, &(sr->attr), sr_arpcache_timeout, sr);
     
     /* Add initialization code here! */
+    sr_arpcache_dump(&(sr->cache));
 
 } /* -- sr_init -- */
 
@@ -108,7 +109,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
     /* case1.1: the request destinates to an router interface */
     if (ntohs(arp_hdr->ar_op) == arp_op_request && target_if) {
-      fprintf(stderr, "---------case1.1----------\n");
+      fprintf(stdout, "---------case1.1----------\n");
       /* construct ARP reply */
       unsigned long reply_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
       uint8_t *reply_packet = (uint8_t *)malloc(reply_len);
@@ -128,6 +129,7 @@ void sr_handlepacket(struct sr_instance* sr,
       memcpy(reply_arp_hdr->ar_tha, arp_hdr->ar_sha, ETHER_ADDR_LEN);
       reply_arp_hdr->ar_tip = arp_hdr->ar_sip;
 
+      fprintf(stdout, "sending ARP reply packet\n");
       sr_send_packet(sr, reply_packet, reply_len, source_if->name);
       free(reply_packet);
     }
@@ -137,8 +139,8 @@ void sr_handlepacket(struct sr_instance* sr,
     
     /* case1.2: the request does not destinate to an router interface */
     else if (ntohs(arp_hdr->ar_op) == arp_op_reply && target_if) {
-      fprintf(stderr, "---------case1.2----------\n");
-      fprintf(stderr, "arpcache--before:\n");
+      fprintf(stdout, "---------case1.2----------\n");
+      fprintf(stdout, "arpcache--before:\n");
       sr_arpcache_dump(&(sr->cache));
       struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, ntohl(arp_hdr->ar_sip));
       if (arpreq) {
@@ -151,7 +153,7 @@ void sr_handlepacket(struct sr_instance* sr,
         }
         sr_arpreq_destroy(&(sr->cache), arpreq);
       }
-      fprintf(stderr, "arpcache--after:\n");
+      fprintf(stdout, "arpcache--after:\n");
       sr_arpcache_dump(&(sr->cache));
     }
   }
