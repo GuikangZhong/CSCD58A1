@@ -140,8 +140,8 @@ void sr_handlepacket(struct sr_instance* sr,
      * address is one of your router's IP addresses. */
     else if (target_if && ntohs(arp_hdr->ar_op) == arp_op_reply) {
       fprintf(stdout, "---------case1.2----------\n");
-      fprintf(stdout, "arpcache--before:\n");
-      sr_arpcache_dump(&(sr->cache));
+      /*fprintf(stdout, "arpcache--before:\n");
+      sr_arpcache_dump(&(sr->cache));*/
       struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, ntohl(arp_hdr->ar_sip));
       if (arpreq) {
         struct sr_packet *packet;
@@ -159,7 +159,7 @@ void sr_handlepacket(struct sr_instance* sr,
     /* case1.3: the ARP packet does not destinate to an router interface */
     else {
       fprintf(stdout, "---------case1.3----------\n");
-      
+
     }
   }
 
