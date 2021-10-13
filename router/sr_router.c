@@ -85,9 +85,9 @@ void sr_handlepacket(struct sr_instance* sr,
   /* fill in code here */
   /* get the ethernet header */
   sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)packet;
-
   uint16_t ethtype = ethertype(packet);
-
+  struct sr_if *source_if = sr_get_interface(sr, interface);
+  
   if (ethtype == ethertype_arp) {
     sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
     print_hdr_arp(packet+sizeof(sr_ethernet_hdr_t));
@@ -98,7 +98,6 @@ void sr_handlepacket(struct sr_instance* sr,
       /* construct ARP reply */
       unsigned long reply_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
       uint8_t *reply_packet = (uint8_t *)malloc(reply_len);
-      struct sr_if *source_if = sr_get_interface(sr, interface);
       
       /* construct ethernet header */
       sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)reply_packet;
@@ -111,7 +110,7 @@ void sr_handlepacket(struct sr_instance* sr,
       memcpy(reply_arp_hdr, arp_hdr, sizeof(sr_arp_hdr_t));
       reply_arp_hdr->ar_op = htons(arp_op_reply);
       memcpy(reply_arp_hdr->ar_sha, source_if->addr, ETHER_ADDR_LEN);
-      reply_arp_hdr->ar_sip = htonl(source_if->ip);
+      reply_arp_hdr->ar_sip = source_if->ip;
       memcpy(reply_arp_hdr->ar_tha, arp_hdr->ar_sha, ETHER_ADDR_LEN);
       reply_arp_hdr->ar_tip = arp_hdr->ar_sip;
 
@@ -121,12 +120,13 @@ void sr_handlepacket(struct sr_instance* sr,
     /* In the case of an ARP reply, you should only cache the entry if the target IP
        address is one of your router's IP addresses. */
     else if (ntohs(arp_hdr->ar_op) == arp_op_reply && if_walker) {
-      struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, ntohl(arp_hdr->ar_sip));
+      struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip);
       struct sr_packet *packet;
       if (arpreq) {
         for (packet=arpreq->packets; packet != NULL; packet=packet->next) {
           sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)(packet->buf);
           memcpy(ehdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
+          memcpy(ehdr->ether_shost, source_if->addr, ETHER_ADDR_LEN);
           sr_send_packet(sr, packet->buf, packet->len, packet->iface);
         }
         sr_arpreq_destroy(&(sr->cache), arpreq);
@@ -137,16 +137,23 @@ void sr_handlepacket(struct sr_instance* sr,
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
     print_hdr_ip(packet+sizeof(sr_ethernet_hdr_t));
     sr_arpcache_dump(&(sr->cache));
+
+    /* Find out which entry in the routing table has the longest prefix match 
+        with the destination IP address. */
+    char *oif_name = get_interface_by_LPM(sr, ip_hdr->ip_dst);
+    struct sr_if *oif = sr_get_interface(sr, oif_name);
+
     /* send packet to next_hop_ip */
     struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
     if (entry) {
       /* use next_hop_ip->mac mapping in entry to send the packet
         free entry */
+      memcpy(ehdr->ether_dhost, entry->mac, ETHER_ADDR_LEN);
+      memcpy(ehdr->ether_shost, oif->addr, ETHER_ADDR_LEN);
+      sr_send_packet(sr, packet, len, oif_name);
+      free(entry);
     }
     else {
-      /* Find out which entry in the routing table has the longest prefix match 
-         with the destination IP address. */
-      char *oif_name = get_interface_by_LPM(sr, ip_hdr->ip_dst);
       struct sr_arpreq *req = sr_arpcache_queuereq(&(sr->cache), ntohl(ip_hdr->ip_dst), packet, len, oif_name);
       handle_arpreq(sr, req);
     }
