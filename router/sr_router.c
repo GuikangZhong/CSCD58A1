@@ -190,7 +190,8 @@ void sr_handlepacket(struct sr_instance* sr,
 
       /* If the packet is an ICMP echo request and its checksum is valid, 
        * send an ICMP echo reply to the sending host. */
-      if (ip_protocol(packet+sizeof(sr_ethernet_hdr_t)) == ip_protocol_icmp) {
+      int protocol = ip_protocol(packet+sizeof(sr_ethernet_hdr_t));
+      if (protocol == ip_protocol_icmp) {
         fprintf(stderr, "received an ICMP request\n");
         sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t)+sizeof(sr_ip_hdr_t));
         print_hdr_icmp((uint8_t *)icmp_hdr);
@@ -216,22 +217,22 @@ void sr_handlepacket(struct sr_instance* sr,
           print_hdrs(packet, len);
           sr_send_packet(sr, packet, len, source_if->name);
         }
-          /* If the packet contains a TCP or UDP payload, send an 
-           * ICMP port unreachable to the sending host. */
-          else {
-            fprintf(stderr, "sending ICMP unreachable\n");
-    
-            /* construct icmp echo response */
-              sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(ip_hdr+sizeof(sr_ip_hdr_t));
-              reply_icmp_hdr->icmp_type = 3;
-              reply_icmp_hdr->icmp_code = 3;
-              reply_icmp_hdr->icmp_sum = 0;
-              reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_hdr_t));
-    
-              fprintf(stdout, "sending ICMP unreachable\n");
-              print_hdrs(packet, len);
-              sr_send_packet(sr, packet, len, source_if->name);
-          }
+      }
+      /* If the packet contains a TCP or UDP payload, send an 
+      * ICMP port unreachable to the sending host. */
+      else if (protocol == ip_protocol_tcp || protocol == ip_protocol_udp) {
+        fprintf(stderr, "sending ICMP unreachable\n");
+
+        /* construct icmp echo response */
+        sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(ip_hdr+sizeof(sr_ip_hdr_t));
+        reply_icmp_hdr->icmp_type = 3;
+        reply_icmp_hdr->icmp_code = 3;
+        reply_icmp_hdr->icmp_sum = 0;
+        reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_hdr_t));
+
+        fprintf(stdout, "sending ICMP unreachable\n");
+        print_hdrs(packet, len);
+        sr_send_packet(sr, packet, len, source_if->name);
       }
     }
     /* case2.2: the request does not destinate to an router interface */
