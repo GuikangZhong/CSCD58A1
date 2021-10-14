@@ -144,12 +144,12 @@ void sr_handlepacket(struct sr_instance* sr,
       sr_arpcache_dump(&(sr->cache));*/
       struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, ntohl(arp_hdr->ar_sip));
       if (arpreq) {
-        struct sr_packet *packet;
-        for (packet=arpreq->packets; packet != NULL; packet=packet->next) {
-          sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)(packet->buf);
+        struct sr_packet *pkt;
+        for (pkt=arpreq->packets; pkt != NULL; pkt=pkt->next) {
+          sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)(pkt->buf);
           memcpy(ehdr->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
           memcpy(ehdr->ether_shost, source_if->addr, ETHER_ADDR_LEN);
-          sr_send_packet(sr, packet->buf, packet->len, packet->iface);
+          sr_send_packet(sr, pkt->buf, pkt->len, pkt->iface);
         }
         sr_arpreq_destroy(&(sr->cache), arpreq);
       }
@@ -174,24 +174,19 @@ void sr_handlepacket(struct sr_instance* sr,
     /* case2.1: the request destinates to an router interface */
     if (target_if) {
       fprintf(stderr, "---------case2.1----------\n");
-
-      /* construct ICMP reply */
-      unsigned long reply_len = sizeof(sr_ethernet_hdr_t)+sizeof(sr_arp_hdr_t)+sizeof(sr_icmp_hdr_t);
-      uint8_t *icmp_reply = (uint8_t *)malloc(reply_len);
-      
       /* construct ethernet header */
-      sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)icmp_reply;
+      sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)packet;
       memcpy(reply_ehdr->ether_dhost, ehdr->ether_shost, ETHER_ADDR_LEN);
       memcpy(reply_ehdr->ether_shost, source_if->addr, ETHER_ADDR_LEN);
       reply_ehdr->ether_type = htons(ethertype_ip);
 
       /* construct ip header */
-      sr_ip_hdr_t *reply_ip_hdr = (sr_ip_hdr_t *)(icmp_reply+sizeof(sr_ethernet_hdr_t));
-      memcpy(reply_ip_hdr, ip_hdr, sizeof(sr_ip_hdr_t));
-      reply_ip_hdr->ip_src = ip_hdr->ip_dst;
-      reply_ip_hdr->ip_dst = ip_hdr->ip_src;
-      reply_ip_hdr->ip_p = ip_protocol_icmp;
-      reply_ip_hdr->ip_sum = cksum(reply_ip_hdr, sizeof(sr_ip_hdr_t));
+      uint32_t temp = ip_hdr->ip_src;
+      ip_hdr->ip_src = ip_hdr->ip_dst;
+      ip_hdr->ip_dst = temp;
+      ip_hdr->ip_p = ip_protocol_icmp;
+      ip_hdr->ip_sum = 0;
+      ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
 
       /* If the packet is an ICMP echo request and its checksum is valid, 
        * send an ICMP echo reply to the sending host. */
@@ -203,43 +198,40 @@ void sr_handlepacket(struct sr_instance* sr,
           fprintf(stderr, "sending an ICMP echo response\n");
           uint16_t sum = icmp_hdr->icmp_sum;
           icmp_hdr->icmp_sum = 0;
-          icmp_hdr->icmp_sum = cksum(icmp_hdr, sizeof(sr_icmp_hdr_t));
+          icmp_hdr->icmp_sum = cksum(icmp_hdr, len-sizeof(sr_ethernet_hdr_t)-sizeof(sr_ip_hdr_t));
           fprintf(stderr, "computed cksum %d\n", icmp_hdr->icmp_sum);
           if (sum != icmp_hdr->icmp_sum) {
             fprintf(stderr, "Incorrect checksum\n");
-            /* return; */
+            return;
           }
          
           /* construct icmp echo response */
-          sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(icmp_reply+sizeof(sr_ethernet_hdr_t)+sizeof(sr_ip_hdr_t));
+          sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t)+sizeof(sr_ip_hdr_t));
           reply_icmp_hdr->icmp_type = 0;
           reply_icmp_hdr->icmp_code = 0;
           reply_icmp_hdr->icmp_sum = 0;
-          reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_hdr_t));
+          reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, len-sizeof(sr_ethernet_hdr_t)-sizeof(sr_ip_hdr_t));
 
           fprintf(stdout, "sending ICMP echo reply\n");
-          print_hdrs(icmp_reply, reply_len);
-          sr_send_packet(sr, icmp_reply, reply_len, source_if->name);
-          free(icmp_reply);
+          print_hdrs(packet, len);
+          sr_send_packet(sr, packet, len, source_if->name);
         }
-
-      }
-      /* If the packet contains a TCP or UDP payload, send an 
-       * ICMP port unreachable to the sending host. */
-      else {
-        fprintf(stderr, "sending ICMP unreachable\n");
-
-        /* construct icmp echo response */
-          sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(reply_ip_hdr+sizeof(sr_ip_hdr_t));
-          reply_icmp_hdr->icmp_type = 3;
-          reply_icmp_hdr->icmp_code = 3;
-          reply_icmp_hdr->icmp_sum = 0;
-          reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_hdr_t));
-
-          fprintf(stdout, "sending ICMP unreachable\n");
-          print_hdrs(icmp_reply, reply_len);
-          sr_send_packet(sr, icmp_reply, reply_len, source_if->name);
-          free(icmp_reply);
+          /* If the packet contains a TCP or UDP payload, send an 
+           * ICMP port unreachable to the sending host. */
+          else {
+            fprintf(stderr, "sending ICMP unreachable\n");
+    
+            /* construct icmp echo response */
+              sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(ip_hdr+sizeof(sr_ip_hdr_t));
+              reply_icmp_hdr->icmp_type = 3;
+              reply_icmp_hdr->icmp_code = 3;
+              reply_icmp_hdr->icmp_sum = 0;
+              reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_hdr_t));
+    
+              fprintf(stdout, "sending ICMP unreachable\n");
+              print_hdrs(packet, len);
+              sr_send_packet(sr, packet, len, source_if->name);
+          }
       }
     }
     /* case2.2: the request does not destinate to an router interface */
@@ -301,21 +293,21 @@ struct sr_if* get_interface_by_ip(struct sr_instance* sr, uint32_t tip) {
 }
 
 int handle_chksum(sr_ip_hdr_t *ip_hdr) {
-    /* inspect checksum */
-    uint16_t sum = ip_hdr->ip_sum;
-    ip_hdr->ip_sum = 0;
-    ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
-    if (sum != ip_hdr->ip_sum) {
-      fprintf(stderr, "Incorrect checksum\n");
-      return -1;
-    }
+  /* inspect checksum */
+  uint16_t sum = ip_hdr->ip_sum;
+  ip_hdr->ip_sum = 0;
+  ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
+  if (sum != ip_hdr->ip_sum) {
+    fprintf(stderr, "Incorrect checksum\n");
+    return -1;
+  }
 
-    /* decrement TTL by 1 */
-    ip_hdr->ip_ttl--;
-    ip_hdr->ip_sum = 0;
-    ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
-    
-    return 0;
+  /* decrement TTL by 1 */
+  ip_hdr->ip_ttl--;
+  ip_hdr->ip_sum = 0;
+  ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
+  
+  return 0;
 }
 
 int sanity_check(uint8_t *buf, unsigned int length) {
