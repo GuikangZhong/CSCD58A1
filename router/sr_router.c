@@ -246,6 +246,20 @@ void sr_handlepacket(struct sr_instance* sr,
       /* find if match */
       char *oif_name = get_interface_by_LPM(sr, ip_hdr->ip_dst);
       if (oif_name == NULL) {
+        /* construct ethernet header */
+        sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)packet;
+        memcpy(reply_ehdr->ether_dhost, ehdr->ether_shost, ETHER_ADDR_LEN);
+        memcpy(reply_ehdr->ether_shost, source_if->addr, ETHER_ADDR_LEN);
+        reply_ehdr->ether_type = htons(ethertype_ip);
+
+        /* construct ip header */
+        uint32_t temp = ip_hdr->ip_src;
+        ip_hdr->ip_src = ip_hdr->ip_dst;
+        ip_hdr->ip_dst = temp;
+        ip_hdr->ip_p = ip_protocol_icmp;
+        ip_hdr->ip_sum = 0;
+        ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
+        
         /* construct icmp echo response */
         sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(ip_hdr+sizeof(sr_ip_hdr_t));
         reply_icmp_hdr->icmp_type = 3;
