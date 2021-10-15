@@ -245,6 +245,18 @@ void sr_handlepacket(struct sr_instance* sr,
          with the destination IP address. */
       /* find if match */
       char *oif_name = get_interface_by_LPM(sr, ip_hdr->ip_dst);
+      if (oif_name == NULL) {
+        /* construct icmp echo response */
+        sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(ip_hdr+sizeof(sr_ip_hdr_t));
+        reply_icmp_hdr->icmp_type = 3;
+        reply_icmp_hdr->icmp_code = 0;
+        reply_icmp_hdr->icmp_sum = 0;
+        reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_hdr_t));
+
+        fprintf(stdout, "sending ICMP (Type 3, Code 3) unreachable\n");
+        unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t);
+        sr_send_packet(sr, packet, new_len, source_if->name);      
+      }
       struct sr_if *oif = sr_get_interface(sr, oif_name);
 
       /* send packet to next_hop_ip */
