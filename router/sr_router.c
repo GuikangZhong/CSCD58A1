@@ -273,13 +273,13 @@ char* get_interface_by_LPM(struct sr_instance* sr, uint32_t ip_dst) {
   int longest_mask = 0;
   while (entry) {
     uint32_t netid = ntohl(ip_dst) & entry->mask.s_addr;
-    if (entry->gw.s_addr == netid) {
+    if (ntohl(entry->gw.s_addr) == netid) {
       if (longest_mask < entry->mask.s_addr) {
         longest_mask = entry->mask.s_addr;
         match = entry;
       }
-      entry = entry->next;
     }
+    entry = entry->next;
   }
   return match ? match->interface : NULL;
 }
