@@ -27,6 +27,8 @@ struct sr_if* get_interface_by_ip(struct sr_instance* sr, uint32_t tip);
 char* get_interface_by_LPM(struct sr_instance* sr, uint32_t ip_dst);
 int sanity_check(uint8_t *buf, unsigned int length);
 int handle_chksum(sr_ip_hdr_t *ip_hdr);
+void construct_eth_header(uint8_t *buf, uint8_t *dst, uint8_t *src, uint16_t type);
+void construct_arp_header(uint8_t *buf, struct sr_if* source_if, sr_arp_hdr_t *arp_hdr, unsigned short type);
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -114,21 +116,10 @@ void sr_handlepacket(struct sr_instance* sr,
       uint8_t *arp_reply = (uint8_t *)malloc(reply_len);
       
       /* construct ethernet header */
-      sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)arp_reply;
-      memcpy(reply_ehdr->ether_dhost, ehdr->ether_shost, ETHER_ADDR_LEN);
-      memcpy(reply_ehdr->ether_shost, source_if->addr, ETHER_ADDR_LEN);
-      reply_ehdr->ether_type = htons(ethertype_arp);
+      construct_eth_header(arp_reply, ehdr->ether_shost, source_if->addr, ethertype_arp);
 
       /* construct arp header */
-      sr_arp_hdr_t *reply_arp_hdr = (sr_arp_hdr_t *)(arp_reply + sizeof(sr_ethernet_hdr_t));
-      memcpy(reply_arp_hdr, arp_hdr, sizeof(sr_arp_hdr_t));
-      reply_arp_hdr->ar_op = htons(arp_op_reply);
-      /* scource */
-      memcpy(reply_arp_hdr->ar_sha, source_if->addr, ETHER_ADDR_LEN);
-      reply_arp_hdr->ar_sip = source_if->ip;
-      /* destination*/
-      memcpy(reply_arp_hdr->ar_tha, arp_hdr->ar_sha, ETHER_ADDR_LEN);
-      reply_arp_hdr->ar_tip = arp_hdr->ar_sip;
+      construct_arp_header(arp_reply + sizeof(sr_ethernet_hdr_t), source_if, arp_hdr, arp_op_reply);
 
       fprintf(stdout, "sending ARP reply packet\n");
       print_hdrs(arp_reply, reply_len);
@@ -247,10 +238,7 @@ void sr_handlepacket(struct sr_instance* sr,
       char *oif_name = get_interface_by_LPM(sr, ip_hdr->ip_dst);
       if (oif_name == NULL) {
         /* construct ethernet header */
-        sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)packet;
-        memcpy(reply_ehdr->ether_dhost, ehdr->ether_shost, ETHER_ADDR_LEN);
-        memcpy(reply_ehdr->ether_shost, source_if->addr, ETHER_ADDR_LEN);
-        reply_ehdr->ether_type = htons(ethertype_ip);
+        construct_eth_header(packet, ehdr->ether_shost, source_if->addr, ethertype_ip);
 
         /* construct ip header */
         uint32_t temp = ip_hdr->ip_src;
@@ -267,7 +255,7 @@ void sr_handlepacket(struct sr_instance* sr,
         reply_icmp_hdr->icmp_sum = 0;
         reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_hdr_t));
 
-        fprintf(stdout, "sending ICMP (Type 3, Code 3) unreachable\n");
+        fprintf(stdout, "sending ICMP (Type 3, Code 0) unreachable\n");
         unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t);
         sr_send_packet(sr, packet, new_len, source_if->name);      
       }
@@ -291,6 +279,25 @@ void sr_handlepacket(struct sr_instance* sr,
   }
 
 }/* end sr_ForwardPacket */
+
+void construct_eth_header(uint8_t *buf, uint8_t *dst, uint8_t *src, uint16_t type) {
+    sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)buf;
+    memcpy(reply_ehdr->ether_dhost, dst, ETHER_ADDR_LEN);
+    memcpy(reply_ehdr->ether_shost, src, ETHER_ADDR_LEN);
+    reply_ehdr->ether_type = htons(type);
+}
+
+void construct_arp_header(uint8_t *buf, struct sr_if* source_if, sr_arp_hdr_t *arp_hdr, unsigned short type) {
+    sr_arp_hdr_t *reply_arp_hdr = (sr_arp_hdr_t *)buf;
+    memcpy(reply_arp_hdr, arp_hdr, sizeof(sr_arp_hdr_t));
+    reply_arp_hdr->ar_op = htons(type);
+    /* scource */
+    memcpy(reply_arp_hdr->ar_sha, source_if->addr, ETHER_ADDR_LEN);
+    reply_arp_hdr->ar_sip = source_if->ip;
+    /* destination*/
+    memcpy(reply_arp_hdr->ar_tha, arp_hdr->ar_sha, ETHER_ADDR_LEN);
+    reply_arp_hdr->ar_tip = arp_hdr->ar_sip;
+}
 
 /* Get interface name by longest prefix match */
 char* get_interface_by_LPM(struct sr_instance* sr, uint32_t ip_dst) {
