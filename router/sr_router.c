@@ -243,6 +243,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
       /* Find out which entry in the routing table has the longest prefix match 
          with the destination IP address. */
+      /* find if match */
       char *oif_name = get_interface_by_LPM(sr, ip_hdr->ip_dst);
       struct sr_if *oif = sr_get_interface(sr, oif_name);
 
@@ -269,16 +270,18 @@ void sr_handlepacket(struct sr_instance* sr,
 char* get_interface_by_LPM(struct sr_instance* sr, uint32_t ip_dst) {
   struct sr_rt *entry = sr->routing_table;
   struct sr_rt *match;
-  uint32_t diff = 0xFFFFFFFF;
+  int longest_mask = 0;
   while (entry) {
-    uint32_t netid = ntohl(entry->dest.s_addr) & ntohl(entry->mask.s_addr);
-    if (diff > netid - ntohl(ip_dst)) {
-      diff = netid - ntohl(ip_dst);
-      match = entry;
+    uint32_t netid = ntohl(ip_dst) & entry->mask.s_addr;
+    if (entry->gw.s_addr == netid) {
+      if (longest_mask < entry->mask.s_addr) {
+        longest_mask = entry->mask.s_addr;
+        match = entry;
+      }
+      entry = entry->next;
     }
-    entry = entry->next;
   }
-  return match->interface;
+  return match ? match->interface : NULL;
 }
 
 /* Get interface object by exact match */
