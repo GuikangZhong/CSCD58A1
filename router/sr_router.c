@@ -104,8 +104,8 @@ void sr_handlepacket(struct sr_instance* sr,
   
   /* case1: is an arp request */
   if (ethtype == ethertype_arp) {
+    fprintf(stdout, "It's a ARP request!\n");
     sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t));
-    print_hdr_arp(packet+sizeof(sr_ethernet_hdr_t));
     struct sr_if *target_if = get_interface_by_ip(sr, arp_hdr->ar_tip);
 
     /* case1.1: the ARP request destinates to an router interface
@@ -155,11 +155,10 @@ void sr_handlepacket(struct sr_instance* sr,
 
   /* case2: is an ip request */
   else if (ethtype == ethertype_ip) {
+    fprintf(stdout, "It's a IP request!\n");
     uint8_t *ip_buf = packet+sizeof(sr_ethernet_hdr_t);
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)ip_buf;
     struct sr_if *target_if = get_interface_by_ip(sr, ip_hdr->ip_dst);
-    print_hdr_ip(packet+sizeof(sr_ethernet_hdr_t));
-
 
     /* Sent ICMP type 11 code 0, if an IP packet is discarded during processing because the TTL field is 0 */
     if (ip_hdr->ip_ttl == 0) {
