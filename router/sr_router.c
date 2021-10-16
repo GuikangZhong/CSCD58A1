@@ -167,7 +167,7 @@ void sr_handlepacket(struct sr_instance* sr,
       construct_eth_header(packet, ehdr->ether_shost, source_if->addr, ethertype_ip);
 
       /* construct ip header */
-      construct_ip_header(ip_buf, ip_hdr->ip_dst, ip_hdr->ip_src, ip_protocol_icmp);
+      construct_ip_header(ip_buf, ip_hdr->ip_src, ip_hdr->ip_dst, ip_protocol_icmp);
 
       /* If the packet is an ICMP echo request and its checksum is valid, 
        * send an ICMP echo reply to the sending host. */
@@ -267,9 +267,8 @@ void construct_arp_header(uint8_t *buf, struct sr_if* source_if, sr_arp_hdr_t *a
 
 void construct_ip_header(uint8_t *buf, uint8_t dst, uint8_t src, uint16_t type) {
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(buf);
-  uint32_t temp = ip_hdr->ip_src;
-  ip_hdr->ip_src = ip_hdr->ip_dst;
-  ip_hdr->ip_dst = temp;
+  ip_hdr->ip_src = src;
+  ip_hdr->ip_dst = dst;
   ip_hdr->ip_p = type;
   ip_hdr->ip_sum = 0;
   ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
@@ -295,7 +294,7 @@ uint8_t* construct_icmp_header(uint8_t *buf, struct sr_if* source_if, uint8_t ty
     /* construct ip header */
     uint8_t *reply_ip_buf = reply + sizeof(sr_ethernet_hdr_t);
     memcpy(reply_ip_buf, ip_hdr, sizeof(sr_ip_hdr_t));
-    construct_ip_header(reply_ip_buf, ip_hdr->ip_dst, ip_hdr->ip_src, ip_protocol_icmp);
+    construct_ip_header(reply_ip_buf, ip_hdr->ip_src, ip_hdr->ip_dst, ip_protocol_icmp);
     sr_icmp_t3_hdr_t *reply_icmp_hdr = (sr_icmp_t3_hdr_t *)(reply_ip_buf + sizeof(sr_ip_hdr_t));
     reply_icmp_hdr->icmp_type = type;
     reply_icmp_hdr->icmp_code = code;
