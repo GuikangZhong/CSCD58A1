@@ -233,7 +233,7 @@ void sr_handlepacket(struct sr_instance* sr,
         unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
         fprintf(stdout, "sending ICMP (Type 11, Code 0) unreachable\n");
         sr_send_packet(sr, reply, new_len, source_if->name);
-        print_hdrs(reply, new_len);
+        print_hdrs(reply, 56);
         free(reply);
         return;
       }
@@ -249,7 +249,7 @@ void sr_handlepacket(struct sr_instance* sr,
         unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
         fprintf(stdout, "sending ICMP (Type 3, Code 0) unreachable\n");
         sr_send_packet(sr, reply, new_len, source_if->name);
-        print_hdrs(reply, new_len);
+        print_hdrs(reply, 56);
         free(reply);
         return;
       }
@@ -327,7 +327,7 @@ uint8_t* construct_icmp_header(uint8_t *buf, struct sr_if* source_if, uint8_t ty
     reply_icmp_hdr->icmp_type = type;
     reply_icmp_hdr->icmp_code = code;
     reply_icmp_hdr->icmp_sum = 0;
-    memcpy(reply_icmp_hdr->data, ip_hdr, sizeof(sr_ip_hdr_t)+8);
+    memcpy(reply_icmp_hdr->data, ip_hdr, ICMP_DATA_SIZE);
     reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_t3_hdr_t));
   }
   fprintf(stdout, "ICMP constructed: ");
