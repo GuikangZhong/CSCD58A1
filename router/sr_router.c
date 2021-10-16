@@ -161,6 +161,11 @@ void sr_handlepacket(struct sr_instance* sr,
     struct sr_if *target_if = get_interface_by_ip(sr, ip_hdr->ip_dst);
     fprintf(stdout, "It's TTL is: %d\n", ip_hdr->ip_ttl);
 
+    int success = handle_chksum(ip_hdr);
+    if (success == -1) {
+      fprintf(stderr, "IP header chsum failed!\n");
+      return;
+    }
     /* If it is sent to one of your router's IP addresses, */
     /* case2.1: the request destinates to an router interface */
     if (target_if) {
@@ -216,8 +221,10 @@ void sr_handlepacket(struct sr_instance* sr,
     /* case2.2: the request does not destinate to an router interface */
     else {
       fprintf(stderr, "---------case2.2: to oter place----------\n");
-      int success = handle_chksum(ip_hdr);
-      if (success == -1) return;
+      /* decrement TTL by 1 */
+      ip_hdr->ip_ttl = ip_hdr->ip_ttl - 1;
+      ip_hdr->ip_sum = 0;
+      ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
 
       /* Sent ICMP type 11 code 0, if an IP packet is discarded during processing because the TTL field is 0 */
       if (ip_hdr->ip_ttl == 0) {
@@ -373,12 +380,6 @@ int handle_chksum(sr_ip_hdr_t *ip_hdr) {
     fprintf(stderr, "Incorrect checksum\n");
     return -1;
   }
-
-  /* decrement TTL by 1 */
-  ip_hdr->ip_ttl = ip_hdr->ip_ttl - 1;
-  ip_hdr->ip_sum = 0;
-  ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
-  
   return 0;
 }
 
