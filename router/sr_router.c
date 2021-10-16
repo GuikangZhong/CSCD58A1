@@ -86,6 +86,7 @@ void sr_handlepacket(struct sr_instance* sr,
   assert(interface);
 
   printf("*** -> Received packet of length %d \n",len);
+  print_hdrs(packet, len);
 
   /* fill in code here */
 
@@ -241,6 +242,7 @@ void sr_handlepacket(struct sr_instance* sr,
         unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
         fprintf(stdout, "sending ICMP (Type 3, Code 0) unreachable\n");
         sr_send_packet(sr, reply, new_len, source_if->name);
+        print_hdrs(reply, new_len);
         free(reply);
         return;
       }
@@ -322,7 +324,6 @@ uint8_t* construct_icmp_header(uint8_t *buf, struct sr_if* source_if, uint8_t ty
     reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_t3_hdr_t));
   }
   fprintf(stdout, "ICMP constructed: ");
-  print_hdrs(reply, total_len);
   return reply;
 }
 
