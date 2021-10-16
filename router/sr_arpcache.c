@@ -38,9 +38,11 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
                 uint32_t *ip_addr = reply_ip_hdr->ip_src;
                 char *iname = get_interface_by_LPM(sr, ip_addr);
                 struct sr_if *oif = sr_get_interface(sr, iname);
+                struct sr_if *iif = sr_get_interface(sr, pkt->iface);
                 /* construct icmp unreachable response */
                 unsigned long icmp_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
-                uint8_t *reply = construct_icmp_header(pkt->buf, oif, 3, 1, icmp_len);
+                uint8_t *reply = construct_icmp_header(pkt->buf, iif, 3, 1, icmp_len);
+                construct_eth_header(reply,((sr_ethernet_hdr_t *) pkt->buf)->ether_shost, iif->addr, ethertype_ip);
                 fprintf(stdout, "sending ICMP (Type 3, Code 1) unreachable\n");
                 sr_send_packet(sr, reply, icmp_len, iname);
             }
