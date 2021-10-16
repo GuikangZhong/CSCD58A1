@@ -288,7 +288,7 @@ uint8_t* construct_icmp_header(uint8_t *buf, struct sr_if* source_if, uint8_t ty
   else if (type == 3) {
     unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
     sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)buf;
-    reply = malloc(new_len);
+    reply = (uint8_t *)malloc(new_len);
     /* construct ethernet header */
     construct_eth_header(reply, ehdr->ether_shost, source_if->addr, ethertype_ip);
     /* construct ip header */
@@ -299,8 +299,7 @@ uint8_t* construct_icmp_header(uint8_t *buf, struct sr_if* source_if, uint8_t ty
     reply_icmp_hdr->icmp_type = type;
     reply_icmp_hdr->icmp_code = code;
     reply_icmp_hdr->icmp_sum = 0;
-    memcpy(reply_icmp_hdr->data, ip_hdr, sizeof(sr_ip_hdr_t));
-    memcpy(reply_icmp_hdr->data + sizeof(ip_hdr), reply_ip_buf + sizeof(ip_hdr), 8);
+    memcpy(reply_icmp_hdr->data, ip_hdr, ICMP_DATA_SIZE);
     reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_t3_hdr_t));
   }
   return reply;
