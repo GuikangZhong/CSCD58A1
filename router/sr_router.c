@@ -161,25 +161,6 @@ void sr_handlepacket(struct sr_instance* sr,
     struct sr_if *target_if = get_interface_by_ip(sr, ip_hdr->ip_dst);
     fprintf(stdout, "It's TTL is: %d\n", ip_hdr->ip_ttl);
 
-    /* Sent ICMP type 11 code 0, if an IP packet is discarded during processing because the TTL field is 0 */
-    if (ip_hdr->ip_ttl == 0) {
-
-      unsigned long icmp_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t);
-
-      /* construct ethernet header */
-      construct_eth_header(packet, ehdr->ether_shost, source_if->addr, ethertype_ip);
-
-      /* construct ip header */
-      construct_ip_header(ip_buf, ip_hdr->ip_src, source_if->ip, ip_protocol_icmp);
-
-      /* construct icmp header */
-      construct_icmp_header(packet, source_if, 11, 0, icmp_len);
-
-      fprintf(stdout, "sending ICMP (type:11, code: 0)\n");
-      print_hdrs(packet, icmp_len);
-      sr_send_packet(sr, packet, icmp_len, source_if->name);
-    }
-
     /* If it is sent to one of your router's IP addresses, */
     /* case2.1: the request destinates to an router interface */
     if (target_if) {
@@ -237,6 +218,25 @@ void sr_handlepacket(struct sr_instance* sr,
       fprintf(stderr, "---------case2.2: to oter place----------\n");
       int success = handle_chksum(ip_hdr);
       if (success == -1) return;
+
+      /* Sent ICMP type 11 code 0, if an IP packet is discarded during processing because the TTL field is 0 */
+      if (ip_hdr->ip_ttl == 0) {
+
+        unsigned long icmp_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t);
+
+        /* construct ethernet header */
+        construct_eth_header(packet, ehdr->ether_shost, source_if->addr, ethertype_ip);
+
+        /* construct ip header */
+        construct_ip_header(ip_buf, ip_hdr->ip_src, source_if->ip, ip_protocol_icmp);
+
+        /* construct icmp header */
+        construct_icmp_header(packet, source_if, 11, 0, icmp_len);
+
+        fprintf(stdout, "sending ICMP (type:11, code: 0)\n");
+        print_hdrs(packet, icmp_len);
+        sr_send_packet(sr, packet, icmp_len, source_if->name);
+      }
 
       /* Find out which entry in the routing table has the longest prefix match 
          with the destination IP address. */
