@@ -112,7 +112,7 @@ void sr_handlepacket(struct sr_instance* sr,
      * In the case of an ARP request, you should only send an ARP reply if the target IP address is one of
      * your router's IP addresses */
     if (target_if && ntohs(arp_hdr->ar_op) == arp_op_request) {
-      fprintf(stdout, "---------case1.1----------\n");
+      fprintf(stdout, "---------case1.1: arp_request ----------\n");
       /* construct ARP reply */
       unsigned long reply_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
       uint8_t *arp_reply = (uint8_t *)malloc(reply_len);
@@ -132,7 +132,7 @@ void sr_handlepacket(struct sr_instance* sr,
      * In the case of an ARP reply, you should only cache the entry if the target IP
      * address is one of your router's IP addresses. */
     else if (target_if && ntohs(arp_hdr->ar_op) == arp_op_reply) {
-      fprintf(stdout, "---------case1.2----------\n");
+      fprintf(stdout, "---------case1.2: arp_response ----------\n");
       /*fprintf(stdout, "arpcache--before:\n");
       sr_arpcache_dump(&(sr->cache));*/
       struct sr_arpreq *arpreq = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, ntohl(arp_hdr->ar_sip));
@@ -149,7 +149,7 @@ void sr_handlepacket(struct sr_instance* sr,
     }
     /* case1.3: the ARP packet does not destinate to an router interface */
     else {
-      fprintf(stdout, "---------case1.3----------\n");
+      fprintf(stdout, "---------case1.3: arp error case----------\n");
     }
   }
 
@@ -180,7 +180,7 @@ void sr_handlepacket(struct sr_instance* sr,
     /* If it is sent to one of your router's IP addresses, */
     /* case2.1: the request destinates to an router interface */
     if (target_if) {
-      fprintf(stderr, "---------case2.1----------\n");
+      fprintf(stderr, "---------case2.1: to raouter ----------\n");
       /* construct ethernet header */
       construct_eth_header(packet, ehdr->ether_shost, source_if->addr, ethertype_ip);
 
@@ -191,6 +191,7 @@ void sr_handlepacket(struct sr_instance* sr,
        * send an ICMP echo reply to the sending host. */
       int protocol = ip_protocol(packet+sizeof(sr_ethernet_hdr_t));
       if (protocol == ip_protocol_icmp) {
+        fprintf(stderr, "---------case2.1.1: icmp ----------\n");
         fprintf(stderr, "received an ICMP request\n");
         sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t)+sizeof(sr_ip_hdr_t));
         print_hdr_icmp((uint8_t *)icmp_hdr);
@@ -215,6 +216,7 @@ void sr_handlepacket(struct sr_instance* sr,
       /* If the packet contains a TCP or UDP payload, send an 
       * ICMP port unreachable to the sending host. */
       else if (protocol == ip_protocol_tcp || protocol == ip_protocol_udp) {
+        fprintf(stderr, "---------case2.1.2: tcp/udp ----------\n");
         /* construct icmp echo response */
         uint8_t *reply = construct_icmp_header(packet, source_if, 3, 3, len);
         unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
@@ -223,10 +225,13 @@ void sr_handlepacket(struct sr_instance* sr,
         sr_send_packet(sr, reply, new_len, source_if->name);
         free(reply);
       }
+      else {
+        fprintf(stderr, "---------case2.1.2: unknown ----------\n");
+      }
     }
     /* case2.2: the request does not destinate to an router interface */
     else {
-      fprintf(stderr, "---------case2.2----------\n");
+      fprintf(stderr, "---------case2.2: to oter place----------\n");
       int success = handle_chksum(ip_hdr);
       if (success == -1) return;
 
