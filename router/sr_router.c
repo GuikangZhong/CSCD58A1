@@ -187,7 +187,7 @@ void sr_handlepacket(struct sr_instance* sr,
           }
          
           /* construct icmp echo response */
-          construct_icmp_header(ip_buf, source_if, 0, 0, len);
+          construct_icmp_header(packet, source_if, 0, 0, len);
 
           fprintf(stdout, "sending ICMP echo reply\n");
           print_hdrs(packet, len);
@@ -197,14 +197,12 @@ void sr_handlepacket(struct sr_instance* sr,
       /* If the packet contains a TCP or UDP payload, send an 
       * ICMP port unreachable to the sending host. */
       else if (protocol == ip_protocol_tcp || protocol == ip_protocol_udp) {
-        fprintf(stderr, "sending ICMP unreachable\n");
-
         /* construct icmp echo response */
-        construct_icmp_header(ip_buf, source_if, 3, 3, len);
+        uint8_t *reply = construct_icmp_header(packet, source_if, 3, 3, len);
+        unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
 
         fprintf(stdout, "sending ICMP (Type 3, Code 3) unreachable\n");
-        print_hdrs(packet, len);
-        sr_send_packet(sr, packet, len, source_if->name);
+        sr_send_packet(sr, reply, new_len, source_if->name);
       }
     }
     /* case2.2: the request does not destinate to an router interface */
@@ -218,21 +216,10 @@ void sr_handlepacket(struct sr_instance* sr,
       /* find if match */
       char *oif_name = get_interface_by_LPM(sr, ip_hdr->ip_dst);
       if (oif_name == NULL) {
-
-        unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
-        uint8_t *reply = malloc(new_len);
-
-        /* construct ethernet header */
-        construct_eth_header(reply, ehdr->ether_shost, source_if->addr, ethertype_ip);
-
-        /* construct ip header */
-        uint8_t *reply_ip_buf = reply + sizeof(sr_ethernet_hdr_t);
-        memcpy(reply_ip_buf, ip_buf, sizeof(sr_ip_hdr_t));
-        construct_ip_header(reply_ip_buf, ip_hdr->ip_dst, ip_hdr->ip_src, ip_protocol_icmp);
-        
+   
         /* construct icmp echo response */
-        construct_icmp_header(reply_ip_buf, source_if, 3, 0, len);
-
+        uint8_t *reply = construct_icmp_header(packet, source_if, 3, 0, len);
+        unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
         fprintf(stdout, "sending ICMP (Type 3, Code 0) unreachable\n");
         sr_send_packet(sr, reply, new_len, source_if->name);
         free(reply);
