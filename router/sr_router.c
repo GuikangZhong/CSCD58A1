@@ -327,7 +327,7 @@ uint8_t* construct_icmp_header(uint8_t *buf, struct sr_if* source_if, uint8_t ty
     reply_icmp_hdr->icmp_type = type;
     reply_icmp_hdr->icmp_code = code;
     reply_icmp_hdr->icmp_sum = 0;
-    memcpy(reply_icmp_hdr->data, ip_hdr, ICMP_DATA_SIZE);
+    memcpy(reply_icmp_hdr->data, ip_hdr, sizeof(sr_ip_hdr_t)+8);
     reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_t3_hdr_t));
   }
   fprintf(stdout, "ICMP constructed: ");
