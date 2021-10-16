@@ -172,7 +172,7 @@ void sr_handlepacket(struct sr_instance* sr,
       /* construct icmp header */
       construct_icmp_header(packet, source_if, 11, 0, len);
 
-      fprintf(stdout, "sending ICMP echo reply\n");
+      fprintf(stdout, "sending ICMP (type:11, code: 0)\n");
       print_hdrs(packet, len);
       sr_send_packet(sr, packet, len, source_if->name);
     }
@@ -207,7 +207,7 @@ void sr_handlepacket(struct sr_instance* sr,
           /* construct icmp echo response */
           construct_icmp_header(packet, source_if, 0, 0, len);
 
-          fprintf(stdout, "sending ICMP echo reply\n");
+          fprintf(stdout, "sending ICMP (type:0, code:0)\n");
           print_hdrs(packet, len);
           sr_send_packet(sr, packet, len, source_if->name);
         }
@@ -314,7 +314,7 @@ uint8_t* construct_icmp_header(uint8_t *buf, struct sr_if* source_if, uint8_t ty
     /* construct ip header */
     uint8_t *reply_ip_buf = reply + sizeof(sr_ethernet_hdr_t);
     memcpy(reply_ip_buf, ip_hdr, sizeof(sr_ip_hdr_t));
-    construct_ip_header(reply_ip_buf, ip_hdr->ip_src, ip_hdr->ip_dst, ip_protocol_icmp);
+    construct_ip_header(reply_ip_buf, ip_hdr->ip_src, source_if->ip, ip_protocol_icmp);
     sr_icmp_t3_hdr_t *reply_icmp_hdr = (sr_icmp_t3_hdr_t *)(reply_ip_buf + sizeof(sr_ip_hdr_t));
     reply_icmp_hdr->icmp_type = type;
     reply_icmp_hdr->icmp_code = code;
