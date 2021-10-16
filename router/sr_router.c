@@ -221,6 +221,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
         fprintf(stdout, "sending ICMP (Type 3, Code 3) unreachable\n");
         sr_send_packet(sr, reply, new_len, source_if->name);
+        free(reply);
       }
     }
     /* case2.2: the request does not destinate to an router interface */
@@ -320,7 +321,8 @@ uint8_t* construct_icmp_header(uint8_t *buf, struct sr_if* source_if, uint8_t ty
     memcpy(reply_icmp_hdr->data, ip_hdr, ICMP_DATA_SIZE);
     reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, sizeof(sr_icmp_t3_hdr_t));
   }
-  print_hdr_icmp(reply);
+  fprintf(stdout, "ICMP constructed: ");
+  print_hdrs(reply, total_len);
   return reply;
 }
 
