@@ -32,25 +32,16 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
         if (req->times_sent >= 5) {
             /* send icmp host unreachable to source addr of all pkts waiting
                on this request  */
-            unsigned long ehdr_len = sizeof(sr_ethernet_hdr_t);
-            uint8_t *ehdr = (uint8_t *)malloc(ehdr_len);
-            char *iname = req->packets->iface;
-            struct sr_if *oif = sr_get_interface(sr, iname);
-
-            /* construct ethernet header */
-            sr_ethernet_hdr_t *reply_ehdr = (sr_ethernet_hdr_t *)ehdr;
-            uint8_t ether_dhost[ETHER_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-            memcpy(reply_ehdr->ether_dhost, ether_dhost, ETHER_ADDR_LEN);
-            memcpy(reply_ehdr->ether_shost, oif->addr, ETHER_ADDR_LEN);
-            reply_ehdr->ether_type = htons(ethertype_ip);
-
-            /* construct icmp unreachable response */
-            unsigned long icmp_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
-            uint8_t *reply = construct_icmp_header(ehdr, oif, 3, 1, icmp_len);
-            free(ehdr);
-            fprintf(stdout, "sending ICMP (Type 3, Code 1) unreachable\n");
-            sr_send_packet(sr, reply, icmp_len, oif->name);
-            free(reply);
+            struct sr_packet *pkt;
+            for (pkt=req->packets; pkt != NULL; pkt=pkt->next) {
+                char *iname = pkt->iface;
+                struct sr_if *oif = sr_get_interface(sr, iname);
+                /* construct icmp unreachable response */
+                unsigned long icmp_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+                uint8_t *reply = construct_icmp_header(pkt->buf, oif, 3, 1, icmp_len);
+                fprintf(stdout, "sending ICMP (Type 3, Code 1) unreachable\n");
+                sr_send_packet(sr, reply, icmp_len, pkt->iface);
+            }
             sr_arpreq_destroy(&(sr->cache), req);
         }
         else {
