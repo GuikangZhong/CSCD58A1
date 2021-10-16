@@ -223,6 +223,7 @@ void sr_handlepacket(struct sr_instance* sr,
         fprintf(stdout, "sending ICMP (Type 3, Code 0) unreachable\n");
         sr_send_packet(sr, reply, new_len, source_if->name);
         free(reply);
+        return;
       }
       struct sr_if *oif = sr_get_interface(sr, oif_name);
 
@@ -309,7 +310,7 @@ uint8_t* construct_icmp_header(uint8_t *buf, struct sr_if* source_if, uint8_t ty
 /* Get interface name by longest prefix match */
 char* get_interface_by_LPM(struct sr_instance* sr, uint32_t ip_dst) {
   struct sr_rt *entry = sr->routing_table;
-  struct sr_rt *match;
+  struct sr_rt *match = NULL;
   int longest_mask = 0;
   while (entry) {
     uint32_t netid = ntohl(ip_dst) & entry->mask.s_addr;
@@ -321,7 +322,7 @@ char* get_interface_by_LPM(struct sr_instance* sr, uint32_t ip_dst) {
     }
     entry = entry->next;
   }
-  return match ? match->interface : NULL;
+  return match != NULL ? match->interface : NULL;
 }
 
 /* Get interface object by exact match */
