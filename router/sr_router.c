@@ -159,6 +159,9 @@ void sr_handlepacket(struct sr_instance* sr,
     uint8_t *ip_buf = packet+sizeof(sr_ethernet_hdr_t);
     sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)ip_buf;
     struct sr_if *target_if = get_interface_by_ip(sr, ip_hdr->ip_dst);
+    fprintf(stdout, "It's TTL is: %d\n", ip_hdr->ip_ttl);
+    int success = handle_chksum(ip_hdr);
+    if (success == -1) return;
 
     /* Sent ICMP type 11 code 0, if an IP packet is discarded during processing because the TTL field is 0 */
     if (ip_hdr->ip_ttl == 0) {
