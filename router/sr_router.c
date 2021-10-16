@@ -228,18 +228,14 @@ void sr_handlepacket(struct sr_instance* sr,
 
       /* Sent ICMP type 11 code 0, if an IP packet is discarded during processing because the TTL field is 0 */
       if (ip_hdr->ip_ttl == 0) {
-        /* construct ethernet header */
-        construct_eth_header(packet, ehdr->ether_shost, source_if->addr, ethertype_ip);
-
-        /* construct ip header */
-        construct_ip_header(ip_buf, ip_hdr->ip_src, source_if->ip, ip_protocol_icmp);
-
-        /* construct icmp header */
-        construct_icmp_header(packet, source_if, 11, 0, len);
-
-        fprintf(stdout, "sending ICMP (type:11, code: 0)\n");
-        print_hdrs(packet, len);
-        sr_send_packet(sr, packet, len, source_if->name);
+         /* construct icmp echo response */
+        uint8_t *reply = construct_icmp_header(packet, source_if, 11, 0, len);
+        unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+        fprintf(stdout, "sending ICMP (Type 11, Code 0) unreachable\n");
+        sr_send_packet(sr, reply, new_len, source_if->name);
+        print_hdrs(reply, new_len);
+        free(reply);
+        return;
       }
 
       /* Find out which entry in the routing table has the longest prefix match 
@@ -309,7 +305,7 @@ void construct_ip_header(uint8_t *buf, uint32_t dst, uint32_t src, uint16_t type
 uint8_t* construct_icmp_header(uint8_t *buf, struct sr_if* source_if, uint8_t type, uint8_t code, unsigned long total_len) {
   sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t));
   uint8_t *reply;
-  if (type == 0 || type == 11) {
+  if (type == 0) {
     sr_icmp_hdr_t *reply_icmp_hdr = (sr_icmp_hdr_t *)(buf + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
     reply_icmp_hdr->icmp_type = type;
     reply_icmp_hdr->icmp_code = code;
@@ -317,7 +313,7 @@ uint8_t* construct_icmp_header(uint8_t *buf, struct sr_if* source_if, uint8_t ty
     reply_icmp_hdr->icmp_sum = cksum(reply_icmp_hdr, total_len-sizeof(sr_ethernet_hdr_t)-sizeof(sr_ip_hdr_t));
     reply = buf;
   }
-  else if (type == 3) {
+  else if (type == 3 || type == 11) {
     unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
     sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)buf;
     reply = (uint8_t *)calloc(1, new_len);
