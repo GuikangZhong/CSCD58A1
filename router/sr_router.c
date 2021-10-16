@@ -169,7 +169,7 @@ void sr_handlepacket(struct sr_instance* sr,
     /* If it is sent to one of your router's IP addresses, */
     /* case2.1: the request destinates to an router interface */
     if (target_if) {
-      fprintf(stderr, "---------case2.1: to raouter ----------\n");
+      fprintf(stderr, "---------case2.1: to router ----------\n");
       /* If the packet is an ICMP echo request and its checksum is valid, 
        * send an ICMP echo reply to the sending host. */
       int protocol = ip_protocol(packet+sizeof(sr_ethernet_hdr_t));
@@ -206,11 +206,6 @@ void sr_handlepacket(struct sr_instance* sr,
       * ICMP port unreachable to the sending host. */
       else if (protocol == ip_protocol_tcp || protocol == ip_protocol_udp) {
 
-        /* construct ethernet header */
-        construct_eth_header(packet, ehdr->ether_shost, source_if->addr, ethertype_ip);
-        /* construct ip header */
-        construct_ip_header(ip_buf, ip_hdr->ip_src, ip_hdr->ip_dst, ip_protocol_icmp);
-
         fprintf(stderr, "---------case2.1.2: tcp/udp ----------\n");
         /* construct icmp echo response */
         uint8_t *reply = construct_icmp_header(packet, source_if, 3, 3, len);
@@ -221,16 +216,12 @@ void sr_handlepacket(struct sr_instance* sr,
         free(reply);
       }
       else {
-        /* construct ethernet header */
-        construct_eth_header(packet, ehdr->ether_shost, source_if->addr, ethertype_ip);
-        /* construct ip header */
-        construct_ip_header(ip_buf, ip_hdr->ip_src, ip_hdr->ip_dst, ip_protocol_icmp);
         fprintf(stderr, "---------case2.1.3: unknown ----------\n");
       }
     }
     /* case2.2: the request does not destinate to an router interface */
     else {
-      fprintf(stderr, "---------case2.2: to oter place----------\n");
+      fprintf(stderr, "---------case2.2: to other place----------\n");
       /* decrement TTL by 1 */
       ip_hdr->ip_ttl = ip_hdr->ip_ttl - 1;
       ip_hdr->ip_sum = 0;
