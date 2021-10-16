@@ -324,7 +324,7 @@ uint8_t* construct_icmp_header(uint8_t *buf, struct sr_if* source_if, uint8_t ty
     uint8_t *reply_ip_buf = reply + sizeof(sr_ethernet_hdr_t);
     memcpy(reply_ip_buf, ip_hdr, sizeof(sr_ip_hdr_t));
     sr_ip_hdr_t *reply_ip = (sr_ip_hdr_t *) reply_ip_buf;
-    reply_ip->ip_len = sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t) + 1;
+    reply_ip->ip_len = 56;
     if (type == 11) {
       reply_ip->ip_ttl = 100;
     }
