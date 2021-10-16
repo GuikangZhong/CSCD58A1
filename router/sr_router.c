@@ -167,7 +167,7 @@ void sr_handlepacket(struct sr_instance* sr,
       construct_eth_header(packet, ehdr->ether_shost, source_if->addr, ethertype_ip);
 
       /* construct ip header */
-      construct_ip_header(ip_buf, ip_hdr->ip_src, ip_hdr->ip_dst, ip_protocol_icmp);
+      construct_ip_header(ip_buf, ip_hdr->ip_src, source_if->ip, ip_protocol_icmp);
 
       /* construct icmp header */
       construct_icmp_header(packet, source_if, 11, 0, len);
@@ -372,7 +372,7 @@ int handle_chksum(sr_ip_hdr_t *ip_hdr) {
   }
 
   /* decrement TTL by 1 */
-  ip_hdr->ip_ttl--;
+  ip_hdr->ip_ttl = ip_hdr->ip_ttl - 1;
   ip_hdr->ip_sum = 0;
   ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
   
