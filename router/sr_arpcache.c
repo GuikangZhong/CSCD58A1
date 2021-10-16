@@ -32,6 +32,16 @@ void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
         if (req->times_sent >= 5) {
             /* send icmp host unreachable to source addr of all pkts waiting
                on this request  */
+            /* construct icmp echo response */
+            char *iname = req->packets->iface;
+            struct sr_if *oif = sr_get_interface(sr, iname);
+            unsigned long len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+            uint8_t *reply = construct_icmp_header(reply, oif, 3, 1, len);
+            unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+
+            fprintf(stdout, "sending ICMP (Type 3, Code 1) unreachable\n");
+            sr_send_packet(sr, reply, new_len, oif->name);
+            
             sr_arpreq_destroy(&(sr->cache), req);
         }
         else {
