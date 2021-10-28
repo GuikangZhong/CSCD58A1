@@ -36,7 +36,8 @@ PING 192.168.2.1 (192.168.2.1) 56(84) bytes of data.
 --- 192.168.2.1 ping statistics ---
 3 packets transmitted, 3 received, 0% packet loss, time 2003ms
 rtt min/avg/max/mdev = 9.445/24.732/35.198/11.052 ms
-
+```
+```console
 mininet> client ping -c 3 172.64.3.1
 PING 172.64.3.1 (172.64.3.1) 56(84) bytes of data.
 64 bytes from 172.64.3.1: icmp_seq=1 ttl=64 time=39.9 ms
@@ -46,7 +47,8 @@ PING 172.64.3.1 (172.64.3.1) 56(84) bytes of data.
 --- 172.64.3.1 ping statistics ---
 3 packets transmitted, 3 received, 0% packet loss, time 2004ms
 rtt min/avg/max/mdev = 19.528/33.326/40.574/9.761 ms
-
+```
+```console
 mininet> client ping -c 3 10.0.1.1
 PING 10.0.1.1 (10.0.1.1) 56(84) bytes of data.
 64 bytes from 10.0.1.1: icmp_seq=1 ttl=64 time=1.72 ms
