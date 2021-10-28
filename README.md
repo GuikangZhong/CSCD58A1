@@ -25,3 +25,15 @@ We finished all the required functionality.<br>
 8.The router drop packets when the packet is smaller than the minimum length requirements, or the checksum is invalid, or when the router needs to send ICMP Type 3 or Type 11 messages back to sending hosts.<br>
 9.The router guarantees on timeouts. If an ARP request is not responded to within a 15 seconds, the ICMP host unreachable message is generated and sent out.<br>
 ## List of tests cases run and results
+1. Pinging from the client to any of the router's interfaces (192.168.2.1, 172.64.3.1, 10.0.1.1).
+```console
+mininet> client ping -c 3 192.168.2.1 
+PING 192.168.2.1 (192.168.2.1) 56(84) bytes of data.
+64 bytes from 192.168.2.1: icmp_seq=1 ttl=64 time=29.6 ms
+64 bytes from 192.168.2.1: icmp_seq=2 ttl=64 time=9.45 ms
+64 bytes from 192.168.2.1: icmp_seq=3 ttl=64 time=35.2 ms
+
+--- 192.168.2.1 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2003ms
+rtt min/avg/max/mdev = 9.445/24.732/35.198/11.052 ms
+```
