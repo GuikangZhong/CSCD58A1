@@ -141,16 +141,8 @@ index.html.2        100%[===================>]     161  --.-KB/s    in 0s
 
 2021-10-28 15:36:09 (74.8 MB/s) - 'index.html.2' saved [161/161]
 ```
-6. TCP/UDP packets are sent to one of router's interfaces.
-```console
-mininet> client traceroute -n 192.168.2.1
-traceroute to 192.168.2.1 (192.168.2.1), 30 hops max, 60 byte packets
- 1  10.0.1.1  19.553 ms  26.743 ms  27.673 ms
-```
-In the wireshark, we can see that the router sent ICMP port unreachable error back to sending host. <br>
-![alt text](https://github.com/GuikangZhong/CSCD58A1/blob/main/image/Capture.PNG "Wireshark Capture 1")
 
-7. Destination net unreachable (type 3, code 0)
+6. Destination net unreachable (type 3, code 0)
 ```console
 mininet> client ping -c 3 12.12.12.12
 PING 12.12.12.12 (12.12.12.12) 56(84) bytes of data.
@@ -163,7 +155,7 @@ From 10.0.1.1 icmp_seq=3 Destination Net Unreachable
 ```
 ![alt text](https://github.com/GuikangZhong/CSCD58A1/blob/main/image/Type3Code0Wireshark.PNG "Wireshark Capture 2")
 
-8. Destination host unreachable (type 3, code 1)
+7. Destination host unreachable (type 3, code 1)
 ```console
 mininet> client ping -c 3 192.168.2.3
 PING 192.168.2.3 (192.168.2.3) 56(84) bytes of data.
@@ -177,10 +169,10 @@ pipe 3
 ```
 We inserted a routing entry with IP address 192.168.2.3 in the routing table, which does not exist in the network.
 ![alt text](https://github.com/GuikangZhong/CSCD58A1/blob/main/image/rtable.PNG "Wireshark Capture 3")<br>
-The Wireshark captured the Type3 Code1 messages.
+After the router sent five ARP requests, the Wireshark captured the Type3 Code1 messages from the router.
 ![alt text](https://github.com/GuikangZhong/CSCD58A1/blob/main/image/Type3Code1Wireshark.PNG "Wireshark Capture 4")
 
-9. Port unreachable (type 3, code 3)
+8. Port unreachable (type 3, code 3)
 ```console
 mininet> client traceroute -n 192.168.2.1
 traceroute to 192.168.2.1 (192.168.2.1), 30 hops max, 60 byte packets
