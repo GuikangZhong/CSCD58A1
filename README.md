@@ -148,4 +148,34 @@ traceroute to 192.168.2.1 (192.168.2.1), 30 hops max, 60 byte packets
  1  10.0.1.1  19.553 ms  26.743 ms  27.673 ms
 ```
 In the wireshark, we can see that the router sent ICMP port unreachable error back to sending host. <br>
-![alt text](https://github.com/GuikangZhong/CSCD58A1/blob/main/image/Capture.PNG "Wireshark Capture")
+![alt text](https://github.com/GuikangZhong/CSCD58A1/blob/main/image/Capture.PNG "Wireshark Capture 1")
+
+7. ping an unreachable host (Case Type3 Code0)
+```console
+mininet> client ping -c 3 12.12.12.12
+PING 12.12.12.12 (12.12.12.12) 56(84) bytes of data.
+From 10.0.1.1 icmp_seq=1 Destination Net Unreachable
+From 10.0.1.1 icmp_seq=2 Destination Net Unreachable
+From 10.0.1.1 icmp_seq=3 Destination Net Unreachable
+
+--- 12.12.12.12 ping statistics ---
+3 packets transmitted, 0 received, +3 errors, 100% packet loss, time 2004ms
+```
+![alt text](https://github.com/GuikangZhong/CSCD58A1/blob/main/image/Type3Code0Wireshark.PNG "Wireshark Capture 2")
+
+8. ping an unreachable host (Case Type3 Code1)
+```console
+mininet> client ping -c 3 192.168.2.3
+PING 192.168.2.3 (192.168.2.3) 56(84) bytes of data.
+From 192.168.2.1 icmp_seq=3 Destination Host Unreachable
+From 192.168.2.1 icmp_seq=2 Destination Host Unreachable
+From 192.168.2.1 icmp_seq=1 Destination Host Unreachable
+
+--- 192.168.2.3 ping statistics ---
+3 packets transmitted, 0 received, +3 errors, 100% packet loss, time 2033ms
+pipe 3
+```
+We inserted a routing entry with IP address 192.168.2.3 in the routing table, which does not exist in the network.
+![alt text](https://github.com/GuikangZhong/CSCD58A1/blob/main/image/rtable.PNG "Wireshark Capture 3")
+The Wireshark captured the Type3 Code1 messages.
+![alt text](https://github.com/GuikangZhong/CSCD58A1/blob/main/image/Type3Code1Wireshark.PNG "Wireshark Capture 4")
