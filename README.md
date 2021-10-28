@@ -59,3 +59,85 @@ PING 10.0.1.1 (10.0.1.1) 56(84) bytes of data.
 3 packets transmitted, 3 received, 0% packet loss, time 2003ms
 rtt min/avg/max/mdev = 1.718/13.379/33.965/14.599 ms
 ```
+2. Tracerouting from the client to any of the router's interfaces
+```console
+mininet> client traceroute -n 192.168.2.1
+traceroute to 192.168.2.1 (192.168.2.1), 30 hops max, 60 byte packets
+ 1  10.0.1.1  11.347 ms  22.432 ms  23.532 ms
+```
+```console
+mininet> client traceroute -n 172.64.3.1
+traceroute to 172.64.3.1 (172.64.3.1), 30 hops max, 60 byte packets
+ 1  10.0.1.1  49.727 ms  64.603 ms  65.291 ms
+```
+```console
+traceroute to 10.0.1.1 (10.0.1.1), 30 hops max, 60 byte packets
+ 1  10.0.1.1  37.239 ms  49.942 ms  50.877 ms
+```
+3. Pinging from the client to any of the app servers (192.168.2.2, 172.64.3.10)
+```console
+mininet> client ping -c 3 server1
+PING 192.168.2.2 (192.168.2.2) 56(84) bytes of data.
+64 bytes from 192.168.2.2: icmp_seq=1 ttl=63 time=102 ms
+64 bytes from 192.168.2.2: icmp_seq=2 ttl=63 time=69.5 ms
+64 bytes from 192.168.2.2: icmp_seq=3 ttl=63 time=53.6 ms
+
+--- 192.168.2.2 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2004ms
+rtt min/avg/max/mdev = 53.640/75.032/101.915/20.087 ms
+```
+```console
+mininet> client ping -c 3 server2
+PING 172.64.3.10 (172.64.3.10) 56(84) bytes of data.
+64 bytes from 172.64.3.10: icmp_seq=1 ttl=63 time=102 ms
+64 bytes from 172.64.3.10: icmp_seq=2 ttl=63 time=26.1 ms
+64 bytes from 172.64.3.10: icmp_seq=3 ttl=63 time=2.72 ms
+
+--- 172.64.3.10 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2003ms
+rtt min/avg/max/mdev = 2.724/43.667/102.200/42.472 ms
+```
+4. Tracerouting from the client to any of the app servers
+```console
+mininet> client traceroute -n server1
+traceroute to 192.168.2.2 (192.168.2.2), 30 hops max, 60 byte packets
+ 1  10.0.1.1  25.248 ms  33.581 ms  79.141 ms
+ 2  * * *
+ 3  * * *
+ 4  * * *
+ 5  192.168.2.2  183.733 ms  184.227 ms  184.681 ms
+```
+```console
+mininet> client traceroute -n server2
+traceroute to 172.64.3.10 (172.64.3.10), 30 hops max, 60 byte packets
+ 1  10.0.1.1  35.903 ms  42.843 ms  88.390 ms
+ 2  * * *
+ 3  * * *
+ 4  * * *
+ 5  172.64.3.10  163.734 ms  164.343 ms  164.921 ms
+```
+5. Downloading a file using HTTP from one of the app servers
+```console
+mininet> client wget http://192.168.2.2
+--2021-10-28 15:35:37--  http://192.168.2.2/
+Connecting to 192.168.2.2:80... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 161 [text/html]
+Saving to: 'index.html.1'
+
+index.html.1        100%[===================>]     161  --.-KB/s    in 0s
+
+2021-10-28 15:35:37 (75.9 MB/s) - 'index.html.1' saved [161/161]
+```
+```console
+mininet> client wget http://172.64.3.10
+--2021-10-28 15:36:09--  http://172.64.3.10/
+Connecting to 172.64.3.10:80... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 161 [text/html]
+Saving to: 'index.html.2'
+
+index.html.2        100%[===================>]     161  --.-KB/s    in 0s
+
+2021-10-28 15:36:09 (74.8 MB/s) - 'index.html.2' saved [161/161]
+```
