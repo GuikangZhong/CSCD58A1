@@ -257,7 +257,7 @@ void sr_handlepacket(struct sr_instance* sr,
       struct sr_if *oif = sr_get_interface(sr, oif_name);
 
       /* send packet to next_hop_ip */
-      struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
+      struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ntohl(ip_hdr->ip_dst));
       if (entry) {
         /* use next_hop_ip->mac mapping in entry to send the packet
           free entry */
