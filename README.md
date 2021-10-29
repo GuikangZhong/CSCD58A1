@@ -116,9 +116,116 @@ void sr_handlepacket(...) {
 }
 ```
 6.The router maintains an ARP cache whose entries are invalidated after a timeout period.<br>
+```
+When a packet is a IP packet and it does not destinate to one of the router's interfaces, we will first look up the cache.
+If there is an valid entry in the cache, send the packet to the ip address.
+If there is no entry for the distination or the entry is timeout, send an ARP request to the destination and put the packet to the arpcache_queue.
+```
+```C
+void sr_handlepacket(...) {
+        if (ethtype == ethertype_arp) {...}
+        else if (ethtype == ethertype_ip) {
+                ...
+                if (target_if) {...} 
+                else {
+                        ...
+                        /* send packet to next_hop_ip */
+                        struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ntohl(ip_hdr->ip_dst));
+                        if (entry) {
+                                /* use next_hop_ip->mac mapping in entry to send the packet
+                                  free entry */
+                                memcpy(ehdr->ether_dhost, entry->mac, ETHER_ADDR_LEN);
+                                memcpy(ehdr->ether_shost, oif->addr, ETHER_ADDR_LEN);
+                                sr_send_packet(sr, packet, len, oif_name);
+                                free(entry);
+                        }
+                        else {
+                                struct sr_arpreq *req = sr_arpcache_queuereq(&(sr->cache), ntohl(ip_hdr->ip_dst), packet, len, oif_name);
+                                handle_arpreq(sr, req);
+                        }
+                }
+        }
+}
+```
 7.The router queues all packets waiting for outstanding ARP replies. If a host does not respond to 5 ARP requests, the queued packet is dropped and an ICMP host unreachable message is sent back to the source of the queued packet.<br>
+```
+This functionality is implemented in the handle_arpreq() function in router/sr_arpcache.c
+```
+```C
+void handle_arpreq(struct sr_instance *sr, struct sr_arpreq *req) {
+    time_t curtime = time(NULL);
+    if (difftime(curtime, req->sent) > 1.0) {
+        if (req->times_sent >= 5) {
+            /* send icmp host unreachable to source addr of all pkts waiting
+               on this request  */
+            struct sr_packet *pkt;
+            for (pkt=req->packets; pkt != NULL; pkt=pkt->next) {
+                sr_ip_hdr_t *reply_ip_hdr = (sr_ip_hdr_t *)((pkt->buf + sizeof(sr_ethernet_hdr_t)));
+                uint32_t ip_addr = reply_ip_hdr->ip_src;
+                char *iname = get_interface_by_LPM(sr, ip_addr);
+                struct sr_if *oif = sr_get_interface(sr, iname);
+                struct sr_if *iif = sr_get_interface(sr, pkt->iface);
+                /* construct icmp unreachable response */
+                unsigned long icmp_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+                uint8_t *reply = construct_icmp_header(pkt->buf, iif, 3, 1, icmp_len);
+                construct_eth_header(reply,((sr_ethernet_hdr_t *) pkt->buf)->ether_shost, oif->addr, ethertype_ip);
+                fprintf(stdout, "sending ICMP (Type 3, Code 1) unreachable\n");
+                sr_send_packet(sr, reply, icmp_len, iname);
+            }
+            sr_arpreq_destroy(&(sr->cache), req);
+        }
+        else {...}
+   }
+```
 8.The router drop packets when the packet is smaller than the minimum length requirements, or the checksum is invalid, or when the router needs to send ICMP Type 3 or Type 11 messages back to sending hosts.<br>
-9.The router guarantees on timeouts. If an ARP request is not responded to within a 15 seconds, the ICMP host unreachable message is generated and sent out.<br>
+```
+If the packet is an ip packet and it does not destinate to one of the router's interfaces, check the TTL.
+If the original TTL is 0, then new computed TTL is < 0, a ICMP type 11 code 0 will be sent out.
+```
+```C
+void sr_handlepacket(...) {
+        if (ethtype == ethertype_arp) {...}
+        else if (ethtype == ethertype_ip) {
+                ...
+                if (target_if) {...} 
+                else {
+                        fprintf(stderr, "---------case2.2: to other place----------\n");
+                        /* decrement TTL by 1 */
+                        ip_hdr->ip_ttl = ip_hdr->ip_ttl - 1;
+                        ip_hdr->ip_sum = 0;
+                        ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
+
+                        /* Sent ICMP type 11 code 0, if an IP packet is discarded during processing because the TTL field is 0 */
+                        if (ip_hdr->ip_ttl < 0) {
+                                /* construct icmp echo response */
+                                uint8_t *reply = construct_icmp_header(packet, source_if, 11, 0, len);
+                                unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+                                fprintf(stdout, "sending ICMP (Type 11, Code 0) unreachable\n");
+                                sr_send_packet(sr, reply, new_len, source_if->name);
+                                print_hdrs(reply, new_len);
+                                free(reply);
+                                return;
+                        }
+                        ...
+                }
+        }
+}
+```
+9.The router guarantees on timeouts. If an ARP request is not responded to within a fixed period of time, the ICMP host unreachable message is generated and sent out.<br>
+```
+The sr_arpcache_sweepreqs() function in router/sr_arpcache.c will be called every seconds. 
+And the handle_arpreq() will send an ICMP type 3 code 1 if an ARP requests are not responsed after it has been 5 times sent. 
+Thus, a 5 sencond timeout has been enforced. 
+```
+```C
+void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
+    /* Fill this in */
+    struct sr_arpreq *req;
+    for (req=sr->cache.requests; req != NULL; req=req->next) {
+        handle_arpreq(sr, req);
+    }
+}
+```
 ## List of tests cases run and results
 1. Pinging from the client to any of the router's interfaces (192.168.2.1, 172.64.3.1, 10.0.1.1).
 ```console
