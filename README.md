@@ -51,10 +51,7 @@ void sr_handlepacket(...) {
 ```
 In the case of a IP packet, if it is target to one of the router's interface and it's protocal is ICMP we check the icmp_type.
 If it's an icmp echo request (icmp_type == 8), we send a icmp echo respose back (icmp_type == 0).
-Note: below functions are the helper functions we defined to handle headers which locate at router/sr_router.c:
-        construct_eth_header(
-        construct_ip_header()
-        construct_icmp_header()
+Note: construct_icmp_header() is the helper functions we defined to handle headers which locate at router/sr_router.c:
 ```
 ```C
 void sr_handlepacket(...) {
@@ -62,15 +59,9 @@ void sr_handlepacket(...) {
         else if (ethtype == ethertype_ip) {
                 ...
                 if (target_if) {
-                        int protocol = ip_protocol(packet+sizeof(sr_ethernet_hdr_t));
+                        ...
                         if (protocol == ip_protocol_icmp) {
-                                fprintf(stderr, "---------case2.1.1: icmp ----------\n");
-                                /* construct ethernet header */
-                                construct_eth_header(packet, ehdr->ether_shost, source_if->addr, ethertype_ip);
-                                /* construct ip header */
-                                construct_ip_header(ip_buf, ip_hdr->ip_src, ip_hdr->ip_dst, ip_protocol_icmp);
-                                sr_icmp_hdr_t *icmp_hdr = (sr_icmp_hdr_t *)(packet+sizeof(sr_ethernet_hdr_t)+sizeof(sr_ip_hdr_t));
-                                
+                                ...
                                 if (icmp_hdr->icmp_type == (uint8_t)8) {
                                         fprintf(stderr, "sending an ICMP echo response\n");
                                         uint16_t sum = icmp_hdr->icmp_sum;
@@ -88,12 +79,39 @@ void sr_handlepacket(...) {
                                         print_hdrs(packet, len);
                                         sr_send_packet(sr, packet, len, source_if->name);
                                 }
+                                
                         }
-                }
+                        else if (protocol == ip_protocol_tcp || protocol == ip_protocol_udp) {...}
+                } else {...}
         }
 }
 ```
 5.The router handles TCP/UDP packets sent to one of its interfaces by responding an ICMP port unreachable.<br>
+```
+In the case of a IP packet, if it is target to one of the router's interface and it's protocal is TCP or UDP, we send an ICMP unreachable.
+```
+```C
+void sr_handlepacket(...) {
+        if (ethtype == ethertype_arp) {...}
+        else if (ethtype == ethertype_ip) {
+                ...
+                if (target_if) {
+                        ...
+                        if (protocol == ip_protocol_icmp) {...}
+                        else if (protocol == ip_protocol_tcp || protocol == ip_protocol_udp) {
+                                fprintf(stderr, "---------case2.1.2: tcp/udp ----------\n");
+                                /* construct icmp echo response */
+                                uint8_t *reply = construct_icmp_header(packet, source_if, 3, 3, len);
+                                unsigned long new_len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+
+                                fprintf(stdout, "sending ICMP (Type 3, Code 3) unreachable\n");
+                                sr_send_packet(sr, reply, new_len, source_if->name);
+                                free(reply);
+                        }
+                } else {...}
+        }
+}
+```
 6.The router maintains an ARP cache whose entries are invalidated after a timeout period.<br>
 7.The router queues all packets waiting for outstanding ARP replies. If a host does not respond to 5 ARP requests, the queued packet is dropped and an ICMP host unreachable message is sent back to the source of the queued packet.<br>
 8.The router drop packets when the packet is smaller than the minimum length requirements, or the checksum is invalid, or when the router needs to send ICMP Type 3 or Type 11 messages back to sending hosts.<br>
