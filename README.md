@@ -155,7 +155,7 @@ From 10.0.1.1 icmp_seq=3 Destination Net Unreachable
 ```
 ![alt text](/image/Type3Code0Wireshark.PNG "Wireshark Capture 2")
 
-1. Destination host unreachable (type 3, code 1)
+7.Destination host unreachable (type 3, code 1)
 ```console
 mininet> client ping -c 3 192.168.2.3
 PING 192.168.2.3 (192.168.2.3) 56(84) bytes of data.
@@ -172,7 +172,7 @@ We inserted a routing entry with IP address 192.168.2.3 in the routing table, wh
 After the router sent five ARP requests, the Wireshark captured the Type3 Code1 messages from the router.
 ![alt text](/image/Type3Code1Wireshark.PNG "Wireshark Capture 4")
 
-1. Port unreachable (type 3, code 3)
+8.Port unreachable (type 3, code 3)
 ```console
 mininet> client traceroute -n 192.168.2.1
 traceroute to 192.168.2.1 (192.168.2.1), 30 hops max, 60 byte packets
