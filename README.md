@@ -49,9 +49,11 @@ void sr_handlepacket(...) {
 ```
 4.The router responds correctly to ICMP echo requests.<br>
 ```
-In the case of a IP packet, if it is target to one of the router's interface and it's protocal is ICMP we check the icmp_type.
-If it's an icmp echo request (icmp_type == 8), we send a icmp echo respose back (icmp_type == 0).
-Note: construct_icmp_header() is the helper functions we defined to handle headers which locate at router/sr_router.c:
+In the case of a IP packet, if it is target to one of the router's interface and it's protocal is ICMP 
+we check the icmp_type. If it's an icmp echo request (icmp_type == 8), we send back a icmp echo respose
+(icmp_type == 0).
+Note: construct_icmp_header() is the helper functions we defined to handle headers which locate at:
+router/sr_router.c:
 ```
 ```C
 void sr_handlepacket(...) {
@@ -88,7 +90,8 @@ void sr_handlepacket(...) {
 ```
 5.The router handles TCP/UDP packets sent to one of its interfaces by responding an ICMP port unreachable.<br>
 ```
-In the case of a IP packet, if it is target to one of the router's interface and it's protocal is TCP or UDP, we send an ICMP unreachable.
+In the case of a IP packet, if it is target to one of the router's interface and it's protocal is TCP or UDP, 
+we send an ICMP unreachable (ICMP type 3 code 3).
 ```
 ```C
 void sr_handlepacket(...) {
