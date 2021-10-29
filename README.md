@@ -16,7 +16,9 @@ Jingwei Wang:<br>
 ## Documentation for function implementing the required and missed functionalities in the starter code
 We finished all the required functionality.<br>
 1.The router can route packets between the Internet and the application servers.<br>
+```
 This functionality is implemented in below function in router/sr_router.c:
+```
 ```C
 void sr_handlepacket(struct sr_instance* sr,
         uint8_t * packet/* lent */,
@@ -25,7 +27,26 @@ void sr_handlepacket(struct sr_instance* sr,
 {...}
 ```
 2.The router correctly handles ARP requests and replies.<br>
+```
+In side the sr_handlepacket() there are two main cases, the first case is used to handle ARP request.
+```
+```C
+void sr_handlepacket(...) {
+        if (ethtype == ethertype_arp) {...}
+        else if (ethtype == ethertype_ip) {...}
+}
+```
 3.The router correctly handles traceroutes through it and to it.<br>
+```
+To handles traceroutes, we need to handle TCP/UDP and ICMP packets properly.
+These packets are belong to IP packets, the second case of below function implemented these.
+```
+```C
+void sr_handlepacket(...) {
+        if (ethtype == ethertype_arp) {...}
+        else if (ethtype == ethertype_ip) {...}
+}
+```
 4.The router responds correctly to ICMP echo requests.<br>
 5.The router handles TCP/UDP packets sent to one of its interfaces by responding an ICMP port unreachable.<br>
 6.The router maintains an ARP cache whose entries are invalidated after a timeout period.<br>
