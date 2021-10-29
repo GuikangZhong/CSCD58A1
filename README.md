@@ -132,8 +132,7 @@ void sr_handlepacket(...) {
                         /* send packet to next_hop_ip */
                         struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ntohl(ip_hdr->ip_dst));
                         if (entry) {
-                                /* use next_hop_ip->mac mapping in entry to send the packet
-                                  free entry */
+                                /* use next_hop_ip->mac mapping in entry to send the packet*/
                                 memcpy(ehdr->ether_dhost, entry->mac, ETHER_ADDR_LEN);
                                 memcpy(ehdr->ether_shost, oif->addr, ETHER_ADDR_LEN);
                                 sr_send_packet(sr, packet, len, oif_name);
