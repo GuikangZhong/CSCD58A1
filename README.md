@@ -16,6 +16,10 @@ Jingwei Wang:<br>
 ## Documentation for function implementing the required and missed functionalities in the starter code
 We finished all the required functionality.<br>
 1.The router can route packets between the Internet and the application servers.<br>
+```
+In router/sr_router.c: void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
+Had implemented the functionality.
+```
 2.The router correctly handles ARP requests and replies.<br>
 3.The router correctly handles traceroutes through it and to it.<br>
 4.The router responds correctly to ICMP echo requests.<br>
