@@ -17,8 +17,8 @@ Jingwei Wang:<br>
 We finished all the required functionality.<br>
 1.The router can route packets between the Internet and the application servers.<br>
 ```
-In router/sr_router.c: void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
-Had implemented the functionality.
+This functionality is implemented in router/sr_router.c:
+ void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
 ```
 2.The router correctly handles ARP requests and replies.<br>
 3.The router correctly handles traceroutes through it and to it.<br>
